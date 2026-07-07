@@ -219,6 +219,7 @@
         <button class="analysis-tab" data-tab="basket"   role="tab" aria-selected="false">🛒 장바구니 분석</button>
         <button class="analysis-tab" data-tab="trend"    role="tab" aria-selected="false">📅 응답 추이</button>
         <button class="analysis-tab" data-tab="sentiment" role="tab" aria-selected="false">😊 감성분석</button>
+        <button class="analysis-tab" data-tab="individual" role="tab" aria-selected="false">📋 개별 응답</button>
       </div>
 
       <!-- 탭 패널: 문항별 분석 -->
@@ -325,11 +326,51 @@
         </div>
       </div>
 
+      <!-- 탭 패널: 개별 응답 -->
+      <div class="tab-panel" id="tab-individual" role="tabpanel">
+        <div class="question-analysis">
+          <h3 style="margin-bottom:var(--sp-4)">응답자별 개별 답변</h3>
+          <div style="overflow-x:auto">
+            <table class="rule-table" id="individual-table">
+              <thead>
+                <tr>
+                  <th>응답 ID</th>
+                  <th>제출 일시</th>
+                  <th>기기 유형</th>
+                  <th>소요 시간</th>
+                  <th>서명 여부</th>
+                  <th>자세히 보기</th>
+                </tr>
+              </thead>
+              <tbody id="individual-tbody">
+                <!-- JS로 채워짐 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div style="font-size:var(--text-xs);color:var(--clr-text-muted);text-align:center;margin:var(--sp-8) 0 var(--sp-4);opacity:0.8">
         © 창순기획 All rights reserved.
       </div>
     </div><!-- /container -->
   </main>
+
+  <!-- 개별 응답 상세 모달 -->
+  <div class="modal-backdrop hidden" id="individual-modal" role="dialog" aria-modal="true" aria-labelledby="modal-ind-title">
+    <div class="modal" style="max-width:640px; max-height:85vh; display:flex; flex-direction:column; padding:0;">
+      <div class="modal-header" style="padding:var(--sp-5) var(--sp-6); border-bottom:1px solid var(--clr-border);">
+        <h2 class="modal-title" id="modal-ind-title">📋 응답 상세 정보</h2>
+        <button class="modal-close" onclick="closeIndividualModal()" aria-label="닫기">✕</button>
+      </div>
+      <div id="individual-modal-content" style="flex:1; overflow-y:auto; padding:var(--sp-6); display:flex; flex-direction:column; gap:var(--sp-4);">
+        <!-- JS로 동적 생성 -->
+      </div>
+      <div class="modal-footer" style="padding:var(--sp-4) var(--sp-6); border-top:1px solid var(--clr-border); margin-top:0;">
+        <button class="btn btn-ghost" onclick="closeIndividualModal()">닫기</button>
+      </div>
+    </div>
+  </div>
 
   <script src="../js/auth.js"></script>
   <script src="../js/api.js"></script>
@@ -370,29 +411,69 @@
 
     /* ── 데이터 로드 ─────────────────────────────────────────────── */
     (async function init() {
-      try {
-        const res = await API.getResults(surveyId);
-        survey    = res.survey;
-        questions = res.questions || [];
-        responses = res.responses || [];
-        answers   = res.answers   || [];
-      } catch {
-        // 데모 데이터
-        survey    = { surveyId:'SRV-001', title:'2026 학교생활 만족도 조사', schoolName:'경남중학교', status:'open', endAt:'2026-07-31' };
-        questions = [
-          { questionId:'Q001', type:'radio',    title:'현재 학년', options:['1학년','2학년','3학년'] },
-          { questionId:'Q002', type:'grid_radio',title:'만족도 그리드', grid:{ rows:['수업','급식','시설','동아리'], cols:['매우불만','불만','보통','만족','매우만족'], colScores:[1,2,3,4,5] } },
-          { questionId:'Q003', type:'scale',     title:'전반적 만족도', validation:{ min:1, max:10 } },
-          { questionId:'Q004', type:'rating',    title:'담임 수업 열정' },
-          { questionId:'Q005', type:'checkbox',  title:'개선 필요 항목', options:['화장실','급식','냉난방','교실비품','운동장','도서관'] },
-          { questionId:'Q007', type:'textarea',  title:'자유 의견' },
-        ];
-        responses = _generateDemoResponses(120);
-        answers   = _generateDemoAnswers(responses, questions);
-        showToast('info', '데모 모드', '샘플 데이터로 분석합니다.');
+      let loadedFromAPI = false;
+      let apiError = null;
+
+      // 1) API 호출 시도
+      if (surveyId) {
+        try {
+          const res = await API.getResults(surveyId);
+          if (res && res.survey) {
+            survey    = res.survey;
+            questions = res.questions || [];
+            responses = res.responses || [];
+            answers   = res.answers   || [];
+            loadedFromAPI = true;
+          }
+        } catch (err) {
+          apiError = err.message || '알 수 없는 오류';
+          console.warn('[Results] API 호출 실패:', apiError);
+        }
       }
 
-      renderPage();
+      // 2) API 실패 또는 surveyId 없음 → 데모 데이터
+      if (!loadedFromAPI) {
+        try {
+          survey    = { surveyId:'SRV-DEMO', title:'2026 학교생활 만족도 조사 (데모)', schoolName:'경남중학교', status:'open', endAt:'2026-07-31' };
+          questions = [
+            { questionId:'Q001', type:'radio',    title:'현재 학년', options:['1학년','2학년','3학년'] },
+            { questionId:'Q002', type:'grid_radio',title:'만족도 그리드', grid:{ rows:['수업','급식','시설','동아리'], cols:['매우불만','불만','보통','만족','매우만족'], colScores:[1,2,3,4,5] } },
+            { questionId:'Q003', type:'scale',     title:'전반적 만족도', validation:{ min:1, max:10 } },
+            { questionId:'Q004', type:'rating',    title:'담임 수업 열정' },
+            { questionId:'Q005', type:'checkbox',  title:'개선 필요 항목', options:['화장실','급식','냉난방','교실비품','운동장','도서관'] },
+            { questionId:'Q007', type:'textarea',  title:'자유 의견' },
+          ];
+          responses = _generateDemoResponses(120);
+          answers   = _generateDemoAnswers(responses, questions);
+          showToast('info', '데모 모드', apiError ? `API 오류: ${apiError}` : '샘플 데이터로 분석합니다.');
+        } catch (demoErr) {
+          console.error('[Results] 데모 데이터 생성 실패:', demoErr);
+          document.getElementById('loading').innerHTML = `
+            <div style="color:var(--clr-danger);padding:var(--sp-8);text-align:center">
+              <div style="font-size:2rem;margin-bottom:var(--sp-4)">⚠️</div>
+              <h2>페이지 초기화 실패</h2>
+              <p style="margin-top:var(--sp-2);font-size:var(--text-sm)">${demoErr.message}</p>
+              <p style="margin-top:var(--sp-4)"><a href="dashboard.html" class="btn btn-primary">← 대시보드로 돌아가기</a></p>
+            </div>`;
+          return;
+        }
+      }
+
+      // 3) 렌더링
+      try {
+        renderPage();
+      } catch (renderErr) {
+        console.error('[Results] renderPage 실패:', renderErr);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('results-main').style.display = 'block';
+        document.getElementById('results-main').innerHTML = `
+          <div class="container" style="padding:var(--sp-8);text-align:center">
+            <div style="font-size:2rem;margin-bottom:var(--sp-4)">⚠️</div>
+            <h2>분석 렌더링 중 오류 발생</h2>
+            <pre style="text-align:left;background:var(--clr-bg-elevated);padding:var(--sp-4);border-radius:var(--radius-md);margin-top:var(--sp-4);overflow-x:auto;font-size:var(--text-xs)">${renderErr.message}\n${renderErr.stack || ''}</pre>
+            <p style="margin-top:var(--sp-4)"><a href="dashboard.html" class="btn btn-primary">← 대시보드로 돌아가기</a></p>
+          </div>`;
+      }
     })();
 
     /* ── 페이지 렌더링 ───────────────────────────────────────────── */
@@ -431,6 +512,7 @@
       populateCrosstabSelects();
       populateBasketSelect();
       populateSentimentSelect();
+      populateIndividualTab();
 
       // 문항별 자동 분석
       renderOverview();
@@ -830,6 +912,101 @@
         });
       });
       return ans;
+    }
+
+    /* ── 개별 응답 탭 렌더링 ────────────────────────────────────────── */
+    function populateIndividualTab() {
+      const tbody = document.getElementById('individual-tbody');
+      if (!responses.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--clr-text-muted);padding:var(--sp-6)">응답 데이터가 없습니다.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = responses.map(r => {
+        const dateStr = new Date(r.submittedAt).toLocaleString('ko-KR');
+        const hasSig  = r.signatureUrl ? '✍️ 있음' : '없음';
+        return `
+          <tr>
+            <td><strong>${r.responseId}</strong></td>
+            <td>${dateStr}</td>
+            <td>${r.deviceType || 'unknown'}</td>
+            <td>${r.durationSec || 0}초</td>
+            <td>${hasSig}</td>
+            <td>
+              <button class="btn btn-ghost btn-sm" onclick="showIndividualDetails('${r.responseId}')">🔎 보기</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function showIndividualDetails(respId) {
+      const resp = responses.find(r => r.responseId === respId);
+      if (!resp) return;
+
+      const content = document.getElementById('individual-modal-content');
+      const respAnswers = answers.filter(a => a.responseId === respId);
+
+      let html = `
+        <div style="background:var(--clr-bg-elevated); padding:var(--sp-4); border-radius:var(--radius-md); font-size:var(--text-sm); display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-2)">
+          <div><strong>제출 일시:</strong> ${new Date(resp.submittedAt).toLocaleString('ko-KR')}</div>
+          <div><strong>기기 유형:</strong> ${resp.deviceType || 'unknown'}</div>
+          <div><strong>소요 시간:</strong> ${resp.durationSec || 0}초</div>
+          <div><strong>응답 ID:</strong> ${resp.responseId}</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:var(--sp-4); margin-top:var(--sp-2)">
+      `;
+
+      questions.forEach((q, idx) => {
+        const qAnswers = respAnswers.filter(a => a.questionId === q.questionId);
+        let ansHtml = '';
+
+        if (qAnswers.length === 0) {
+          ansHtml = `<span style="color:var(--clr-text-muted); font-style:italic">미응답</span>`;
+        } else {
+          if (q.type === 'grid_radio' || q.type === 'grid_checkbox') {
+            ansHtml = `<table style="width:100%; font-size:var(--text-xs); border-collapse:collapse; margin-top:var(--sp-2)">
+              <thead><tr style="background:var(--clr-bg-elevated)"><th style="padding:4px; text-align:left">항목</th><th style="padding:4px; text-align:left">선택</th></tr></thead>
+              <tbody>
+                ${qAnswers.map(a => `<tr><td style="padding:4px; border-bottom:1px solid var(--clr-border)">${a.valueRow}</td><td style="padding:4px; border-bottom:1px solid var(--clr-border); color:var(--clr-primary-light); font-weight:bold">${a.valueCol}</td></tr>`).join('')}
+              </tbody>
+            </table>`;
+          } else if (q.type === 'checkbox') {
+            ansHtml = qAnswers.map(a => `<span class="badge badge-success" style="margin-right:4px">${a.value}</span>`).join(' ');
+          } else if (q.type === 'textarea' || q.type === 'text') {
+            ansHtml = `<div style="background:var(--clr-bg-surface); padding:var(--sp-3); border-radius:var(--radius-sm); white-space:pre-wrap">${qAnswers[0].textRaw || qAnswers[0].value || ''}</div>`;
+          } else {
+            ansHtml = `<strong style="color:var(--clr-primary-light); font-size:var(--text-sm)">${qAnswers[0].value}</strong>`;
+          }
+        }
+
+        html += `
+          <div style="border-bottom:1px solid var(--clr-border); padding-bottom:var(--sp-3)">
+            <div style="font-weight:700; font-size:var(--text-sm); margin-bottom:var(--sp-2)">Q${idx+1}. ${q.title}</div>
+            <div style="padding-left:var(--sp-3)">${ansHtml}</div>
+          </div>
+        `;
+      });
+
+      if (resp.signatureUrl) {
+        html += `
+          <div style="margin-top:var(--sp-2)">
+            <div style="font-weight:700; font-size:var(--text-sm); margin-bottom:var(--sp-2)">✍️ 서명 이미지</div>
+            <div style="background:var(--clr-bg-elevated); padding:var(--sp-4); border-radius:var(--radius-md); text-align:center">
+              <img src="${resp.signatureUrl}" alt="Respondent Signature" style="max-width:100%; max-height:120px; border:1px solid var(--clr-border); border-radius:var(--radius-sm)" />
+            </div>
+          </div>
+        `;
+      }
+
+      html += `</div>`;
+      content.innerHTML = html;
+
+      document.getElementById('individual-modal').classList.remove('hidden');
+    }
+
+    function closeIndividualModal() {
+      document.getElementById('individual-modal').classList.add('hidden');
     }
   </script>
 </body>

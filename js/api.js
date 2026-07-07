@@ -5,7 +5,7 @@
 
 const API = (() => {
   // GAS Web App URL
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxdrYqgGp2UxLfRHqQL1-n47BZGjz3IHTRQed3UxIz1-ac6y0qRJxVyGs3hGMokZiDnEw/exec';
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx5EPYE4FOgK6rMmeQOddy2PTo1FPQLMwhC6FBOI9MtkMpMu_lJb6qP6lQU8txmNPaXcg/exec';
 
   /** 공통 POST 요청 */
   async function _post(action, payload = {}, token = null) {

@@ -7,25 +7,10 @@
   <meta name="description" content="설문 결과를 데이터마이닝으로 분석합니다." />
   <link rel="stylesheet" href="../css/style.css" />
 
-  <!-- CDN: cdnjs with jsdelivr fallback (bypasses education firewalls) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <script>
-    if (typeof Chart === 'undefined') {
-      document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>');
-    }
-  </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.1.0/wordcloud2.min.js"></script>
-  <script>
-    if (typeof WordCloud === 'undefined') {
-      document.write('<script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.js"><\/script>');
-    }
-  </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/vis-network.min.js"></script>
-  <script>
-    if (typeof vis === 'undefined') {
-      document.write('<script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/dist/vis-network.min.js"><\/script>');
-    }
-  </script>
+  <!-- Local Libraries (bypasses education firewalls completely) -->
+  <script src="../js/lib/chart.umd.min.js"></script>
+  <script src="../js/lib/wordcloud2.js"></script>
+  <script src="../js/lib/vis-network.min.js"></script>
 
   <style>
     .results-page { min-height: 100vh; }
@@ -354,6 +339,16 @@
   <script src="../js/mining/crosstab.js"></script>
   <script src="../js/mining/sentiment.js"></script>
   <script>
+    // Global Error Handler for UI debugging
+    window.addEventListener('error', function(e) {
+      console.error(e);
+      const container = document.body;
+      const errorDiv = document.createElement('div');
+      errorDiv.style.cssText = 'position:fixed;top:10px;left:10px;right:10px;background:rgba(239,68,68,0.95);color:white;padding:20px;border-radius:12px;z-index:99999;font-family:monospace;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,0.6);white-space:pre-wrap;line-height:1.5;max-height:80vh;overflow-y:auto;';
+      errorDiv.innerHTML = `<div style="font-weight:bold;font-size:14px;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.3);padding-bottom:5px;">⚠️ 실시간 분석 페이지 오류 감지:</div><strong>에러 메시지:</strong> ${e.message}\n<strong>발생 파일:</strong> ${e.filename} (Line ${e.lineno}, Col ${e.colno})\n\n<strong>상세 스택:</strong>\n${e.error ? e.error.stack : '스택 정보 없음'}`;
+      container.appendChild(errorDiv);
+    });
+
     if (!Auth.requireAuth(true)) { /* redirects */ }
 
     function showToast(type, title, msg='') {

@@ -55,8 +55,24 @@ const Charts = (() => {
     },
   };
 
+  function _checkChartLoaded(canvasId) {
+    if (typeof Chart === 'undefined') {
+      console.warn('Chart.js is not loaded.');
+      const canvas = document.getElementById(canvasId);
+      if (canvas) {
+        const parent = canvas.parentElement;
+        if (parent) {
+          parent.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--clr-text-muted);font-size:var(--text-sm);padding:1rem;text-align:center;border:1px solid var(--clr-border);border-radius:var(--radius-md)">📊 차트 라이브러리(Chart.js)를 로드할 수 없습니다.<br/>방화벽이나 인터넷 연결을 확인해 주세요.</div>`;
+        }
+      }
+      return false;
+    }
+    return true;
+  }
+
   /* ── 막대 차트 (빈도분석) ───────────────────────────────────── */
   function renderBar(canvasId, { labels, values, title = '', unit = '건' }) {
+    if (!_checkChartLoaded(canvasId)) return null;
     _destroy(canvasId);
     const ctx = document.getElementById(canvasId)?.getContext('2d');
     if (!ctx) return null;
@@ -94,6 +110,7 @@ const Charts = (() => {
 
   /* ── 도넛 차트 ──────────────────────────────────────────────── */
   function renderDoughnut(canvasId, { labels, values, title = '' }) {
+    if (!_checkChartLoaded(canvasId)) return null;
     _destroy(canvasId);
     const ctx = document.getElementById(canvasId)?.getContext('2d');
     if (!ctx) return null;
@@ -133,6 +150,7 @@ const Charts = (() => {
 
   /* ── 파레토 차트 (막대 + 누적 라인) ────────────────────────── */
   function renderPareto(canvasId, { labels, values, title = '' }) {
+    if (!_checkChartLoaded(canvasId)) return null;
     _destroy(canvasId);
     const ctx = document.getElementById(canvasId)?.getContext('2d');
     if (!ctx) return null;
@@ -178,6 +196,7 @@ const Charts = (() => {
 
   /* ── 라인 차트 (추이) ───────────────────────────────────────── */
   function renderLine(canvasId, { labels, datasets, title = '' }) {
+    if (!_checkChartLoaded(canvasId)) return null;
     _destroy(canvasId);
     const ctx = document.getElementById(canvasId)?.getContext('2d');
     if (!ctx) return null;

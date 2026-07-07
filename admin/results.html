@@ -7,10 +7,25 @@
   <meta name="description" content="설문 결과를 데이터마이닝으로 분석합니다." />
   <link rel="stylesheet" href="../css/style.css" />
 
-  <!-- CDN: Chart.js, wordcloud2, vis-network -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/dist/vis-network.min.js"></script>
+  <!-- CDN: cdnjs with jsdelivr fallback (bypasses education firewalls) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script>
+    if (typeof Chart === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>');
+    }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.1.0/wordcloud2.min.js"></script>
+  <script>
+    if (typeof WordCloud === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.js"><\/script>');
+    }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/vis-network.min.js"></script>
+  <script>
+    if (typeof vis === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/dist/vis-network.min.js"><\/script>');
+    }
+  </script>
 
   <style>
     .results-page { min-height: 100vh; }

@@ -21,7 +21,7 @@ const CooccurrenceAnalyzer = (() => {
 
     const texts = answers
       .filter(a => a.questionId === questionId && a.textRaw)
-      .map(a => a.textRaw);
+      .map(a => String(a.textRaw));
 
     if (texts.length === 0) return { nodes: [], edges: [], vocab: {} };
 
@@ -125,7 +125,7 @@ const CooccurrenceAnalyzer = (() => {
 
   /* ── 내부 헬퍼 ────────────────────────────────────────────── */
   function _tokenize(text) {
-    return text
+    return String(text || '')
       .replace(/[^\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318Fa-zA-Z0-9\s]/g, ' ')
       .split(/\s+/)
       .map(t => t.replace(/(이다|이에요|합니다|해요|었어|이야|인데|에요|이요|고요|죠|요|을|를|이|가|은|는|의|도|와|과|에|서|로|으로|랑|이랑|하고|에서|에게|까지|부터|보다|처럼|만큼|같이|마다)$/, ''))

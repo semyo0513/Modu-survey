@@ -24,7 +24,7 @@ const FrequencyAnalyzer = (() => {
     const { topN = 30, minLen = 2, stopWords = DEFAULT_STOP_WORDS } = opts;
     const texts = answers
       .filter(a => a.questionId === questionId && a.textRaw)
-      .map(a => a.textRaw);
+      .map(a => String(a.textRaw));
 
     const tokenFreq = {};
     texts.forEach(text => {
@@ -100,7 +100,7 @@ const FrequencyAnalyzer = (() => {
 
   /* ── 간이 형태소 토크나이저 (한국어 공백분리 + 어미 제거) ─── */
   function tokenize(text) {
-    return text
+    return String(text || '')
       .replace(/[^\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F\u0041-\u007A\u0061-\u007A0-9\s]/g, ' ')
       .split(/\s+/)
       .map(t => t.replace(/(이다|이에요|합니다|해요|었어|이야|인데|에요|이요|고요|죠|요|을|를|이|가|은|는|의|도|와|과|에|서|로|으로|랑|이랑|하고|에서|에게|까지|부터|보다|처럼|만큼|같이|마다)$/, ''))

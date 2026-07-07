@@ -13,7 +13,7 @@ const SentimentAnalyzer = (() => {
   function analyze(answers, questionId) {
     const texts = answers
       .filter(a => a.questionId === questionId && a.textRaw)
-      .map(a => ({ responseId: a.responseId, text: a.textRaw }));
+      .map(a => ({ responseId: a.responseId, text: String(a.textRaw) }));
 
     const items = texts.map(({ responseId, text }) => {
       const score = scoreText(text);
@@ -35,7 +35,7 @@ const SentimentAnalyzer = (() => {
    * 단일 텍스트 감성 점수 계산 (-1 ~ 1)
    */
   function scoreText(text) {
-    const tokens = text.replace(/[^\uAC00-\uD7A3a-zA-Z\s]/g, ' ').split(/\s+/);
+    const tokens = String(text || '').replace(/[^\uAC00-\uD7A3a-zA-Z\s]/g, ' ').split(/\s+/);
     let score = 0;
     let count = 0;
     let negator = false;

@@ -23,9 +23,28 @@ const Auth = (() => {
     localStorage.removeItem(EXPIRE_KEY);
   }
 
+  function _resolvePath(path) {
+    if (path.startsWith('/')) {
+      const isGitHubPages = location.hostname.endsWith('github.io');
+      if (isGitHubPages) {
+        const pathSegments = location.pathname.split('/');
+        const repoName = pathSegments[1];
+        if (repoName) {
+          return `/${repoName}${path}`;
+        }
+      }
+    }
+    return path;
+  }
+
   // ── Public ──────────────────────────────────────────────────── //
 
   return {
+    /** 경로 해결 도우미 */
+    resolvePath(path) {
+      return _resolvePath(path);
+    },
+
     /** 로그인 후 세션 저장 */
     saveSession(token, user) {
       _save(token, user);
@@ -78,7 +97,7 @@ const Auth = (() => {
         const next = redirectBack
           ? `?next=${encodeURIComponent(location.href)}`
           : '';
-        location.href = `/login.html${next}`;
+        location.href = _resolvePath(`/login.html${next}`);
         return false;
       }
       return true;
@@ -87,7 +106,7 @@ const Auth = (() => {
     /** 로그인 상태에서 접근 불가 (로그인·가입 페이지용) */
     redirectIfLoggedIn(destination = '/admin/dashboard.html') {
       if (this.isLoggedIn()) {
-        location.href = destination;
+        location.href = _resolvePath(destination);
       }
     },
   };

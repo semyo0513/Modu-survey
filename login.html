@@ -226,7 +226,7 @@
 
         const next = params.get('next');
         setTimeout(() => {
-          location.href = next ? decodeURIComponent(next) : '/admin/dashboard.html';
+          location.href = next ? decodeURIComponent(next) : Auth.resolvePath('/admin/dashboard.html');
         }, 800);
       } catch (err) {
         showFormError(err.message || '이메일 또는 비밀번호가 올바르지 않습니다.');

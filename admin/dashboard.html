@@ -528,11 +528,10 @@
             <a href="builder.html?surveyId=${sv.surveyId}" class="btn btn-ghost btn-sm" aria-label="문항 편집">
               ✏️ 편집
             </a>
-            ${sv.status !== 'closed' ? `
-              <button class="btn btn-ghost btn-sm" data-action="${sv.status==='open'?'close':'open'}" data-surveyid="${sv.surveyId}"
-                      aria-label="${sv.status==='open'?'마감':'게시'}">
-                ${sv.status==='open' ? '⏹ 마감' : '🚀 게시'}
-              </button>` : ''}
+            <button class="btn btn-ghost btn-sm" data-action="${sv.status==='open'?'close':'open'}" data-surveyid="${sv.surveyId}"
+                    aria-label="${sv.status==='open'?'마감':'게시'}">
+              ${sv.status==='open' ? '⏹ 마감' : '🚀 게시'}
+            </button>
             <a href="results.html?surveyId=${sv.surveyId}" class="btn btn-primary btn-sm" style="margin-left:auto"
                aria-label="결과 보기">
               📊 결과

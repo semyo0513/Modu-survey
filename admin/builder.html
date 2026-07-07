@@ -817,7 +817,7 @@ document.getElementById('survey-title-input').addEventListener('input', schedule
 /* ── 기존 문항 로드 ───────────────────────────────────────────────── */
 async function loadExistingQuestions() {
   try {
-    const res = await API.getSurvey(surveyId);
+    const res = await API.getSurveyForEdit(surveyId);
     if (res.survey?.title) document.getElementById('survey-title-input').value = res.survey.title;
     questions = res.questions || [];
     if (questions.length > 0) {

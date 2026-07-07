@@ -243,3 +243,27 @@ function getResultsHandler_(payload, userId) {
 
   return { survey, questions, responses, answers };
 }
+
+/* ── 빌더용 설문 조회 (상태 무관, 소유자 권한 확인) ────────────────── */
+function getSurveyForEditHandler_(payload, userId) {
+  const { surveyId } = payload;
+
+  const surveys = sheetToObjects_('Surveys');
+  const survey  = surveys.find(sv => sv.surveyId === surveyId);
+
+  if (!survey) return { error: '설문을 찾을 수 없습니다.' };
+  if (survey.ownerId !== userId) return { error: '권한이 없습니다.' };
+
+  const questions = sheetToObjects_('Questions')
+    .filter(q => q.surveyId === surveyId)
+    .sort((a, b) => parseInt(a.order) - parseInt(b.order))
+    .map(q => ({
+      ...q,
+      required: q.required === 'true' || q.required === true,
+      options:  q.optionsJson  ? JSON.parse(q.optionsJson)  : [],
+      grid:     q.gridJson     ? JSON.parse(q.gridJson)     : null,
+      validation: q.validationJson ? JSON.parse(q.validationJson) : null,
+    }));
+
+  return { survey, questions };
+}

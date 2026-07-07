@@ -79,6 +79,9 @@ const API = (() => {
     getSurvey(surveyId) {
       return _post('survey.get', { surveyId });
     },
+    getSurveyForEdit(surveyId) {
+      return _post('surveys.getForEdit', { surveyId }, _getToken());
+    },
 
     // ─ Questions ─
     bulkSaveQuestions(surveyId, questions) {

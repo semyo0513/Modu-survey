@@ -69,6 +69,12 @@ function doPost(e) {
         return jsonResponse_(listMySurveysHandler_(user.userId));
       }
 
+      case 'surveys.getForEdit': {
+        const user = requireAuth_(token);
+        if (user.error) return jsonResponse_(user);
+        return jsonResponse_(getSurveyForEditHandler_(payload, user.userId));
+      }
+
       case 'surveys.create': {
         const user = requireAuth_(token);
         if (user.error) return jsonResponse_(user);

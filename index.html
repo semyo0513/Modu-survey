@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SurveyMine — 모두의 설문조사</title>
+  <meta name="description" content="학교 단위 설문조사 플랫폼. 학교를 선택하고 설문에 쉽게 참여하세요." />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* ─ 홈 전용 스타일 ─ */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-8) var(--sp-6);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 배경 오브 */
+    .hero::after {
+      content: '';
+      position: absolute;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, hsla(248,90%,66%,0.12) 0%, transparent 70%);
+      top: -100px; right: -100px;
+      pointer-events: none;
+      animation: float 6s ease-in-out infinite;
+    }
+
+    .hero-card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-2xl);
+      padding: var(--sp-12) var(--sp-10);
+      max-width: 560px;
+      width: 100%;
+      position: relative;
+      z-index: 1;
+      box-shadow: var(--shadow-xl), 0 0 80px hsla(248,90%,66%,0.08);
+      animation: slideUp 0.7s var(--ease-out) both;
+    }
+
+    .hero-logo {
+      width: 64px; height: 64px;
+      background: var(--grad-primary);
+      border-radius: var(--radius-xl);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      margin-bottom: var(--sp-6);
+      box-shadow: 0 8px 24px var(--clr-primary-glow);
+      animation: glow 3s ease-in-out infinite;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-2);
+      background: hsla(185,90%,55%,0.1);
+      border: 1px solid hsla(185,90%,55%,0.25);
+      border-radius: var(--radius-full);
+      padding: var(--sp-1) var(--sp-3);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--clr-accent);
+      margin-bottom: var(--sp-4);
+      letter-spacing: 0.05em;
+    }
+
+    .hero-title {
+      font-size: var(--text-4xl);
+      font-weight: 900;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: var(--sp-3);
+    }
+
+    .hero-subtitle {
+      font-size: var(--text-base);
+      color: var(--clr-text-secondary);
+      line-height: 1.7;
+      margin-bottom: var(--sp-8);
+    }
+
+    /* 2단계 선택 패널 */
+    .select-panel {
+      background: var(--clr-bg-elevated);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-6);
+      margin-bottom: var(--sp-6);
+    }
+
+    .select-step {
+      display: none;
+      flex-direction: column;
+      gap: var(--sp-4);
+    }
+
+    .select-step.active { display: flex; }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      margin-bottom: var(--sp-2);
+    }
+
+    .step-num {
+      width: 28px; height: 28px;
+      background: var(--grad-primary);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: var(--text-xs);
+      font-weight: 800;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .step-title {
+      font-size: var(--text-sm);
+      font-weight: 700;
+      color: var(--clr-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    /* 검색 + 드롭다운 조합 */
+    .search-select-wrap {
+      position: relative;
+    }
+
+    .search-input-wrap {
+      position: relative;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: var(--sp-4);
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--clr-text-muted);
+      font-size: var(--text-base);
+      pointer-events: none;
+    }
+
+    .search-input-wrap .form-input {
+      padding-left: calc(var(--sp-4) + 20px + var(--sp-2));
+    }
+
+    .dropdown-list {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: var(--clr-bg-elevated);
+      border: 1px solid var(--clr-border-focus);
+      border-radius: var(--radius-md);
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: var(--z-overlay);
+      box-shadow: var(--shadow-lg);
+      display: none;
+    }
+
+    .dropdown-list.open { display: block; animation: fadeSlideIn 0.2s var(--ease-out); }
+
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4);
+      cursor: pointer;
+      font-size: var(--text-sm);
+      transition: background var(--dur-fast);
+      border-bottom: 1px solid var(--clr-border);
+    }
+
+    .dropdown-item:last-child { border-bottom: none; }
+
+    .dropdown-item:hover {
+      background: hsla(248,90%,66%,0.1);
+      color: var(--clr-primary-light);
+    }
+
+    .dropdown-item .school-icon {
+      font-size: 1.1rem;
+    }
+
+    .dropdown-empty {
+      padding: var(--sp-6);
+      text-align: center;
+      color: var(--clr-text-muted);
+      font-size: var(--text-sm);
+    }
+
+    /* 설문 목록 카드 */
+    .survey-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-3);
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .survey-list-item {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      padding: var(--sp-4) var(--sp-5);
+      background: var(--clr-bg-card);
+      border: 1.5px solid var(--clr-border);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      transition: all var(--dur-fast) var(--ease-out);
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .survey-list-item:hover {
+      border-color: var(--clr-primary);
+      background: hsla(248,90%,66%,0.06);
+      transform: translateX(4px);
+    }
+
+    .survey-list-icon {
+      width: 44px; height: 44px;
+      border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .survey-list-info { flex: 1; min-width: 0; }
+
+    .survey-list-title {
+      font-size: var(--text-sm);
+      font-weight: 700;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .survey-list-meta {
+      font-size: var(--text-xs);
+      color: var(--clr-text-muted);
+    }
+
+    .survey-list-arrow {
+      color: var(--clr-text-muted);
+      font-size: var(--text-lg);
+      flex-shrink: 0;
+    }
+
+    /* 뒤로가기 버튼 */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-2);
+      font-size: var(--text-sm);
+      color: var(--clr-text-muted);
+      cursor: pointer;
+      transition: color var(--dur-fast);
+      background: none;
+      border: none;
+    }
+
+    .back-btn:hover { color: var(--clr-text-primary); }
+
+    /* 빈 상태 */
+    .empty-state {
+      text-align: center;
+      padding: var(--sp-8);
+    }
+
+    .empty-state .empty-icon {
+      font-size: 2.5rem;
+      margin-bottom: var(--sp-3);
+    }
+
+    .empty-state p {
+      color: var(--clr-text-muted);
+      font-size: var(--text-sm);
+    }
+
+    /* 하단 링크 */
+    .hero-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-4);
+      margin-top: var(--sp-4);
+    }
+
+    .hero-footer a {
+      font-size: var(--text-sm);
+      color: var(--clr-text-muted);
+      transition: color var(--dur-fast);
+    }
+
+    .hero-footer a:hover { color: var(--clr-primary-light); }
+
+    /* 피처 하이라이트 */
+    .feature-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-2);
+      margin-top: var(--sp-3);
+    }
+
+    .feature-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-1);
+      padding: var(--sp-1) var(--sp-3);
+      background: hsla(228,30%,50%,0.08);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius-full);
+      font-size: var(--text-xs);
+      color: var(--clr-text-muted);
+    }
+
+    /* 로딩 스켈레톤 */
+    .skeleton {
+      background: linear-gradient(
+        90deg,
+        var(--clr-bg-elevated) 25%,
+        var(--clr-bg-card) 50%,
+        var(--clr-bg-elevated) 75%
+      );
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.5s ease-in-out infinite;
+      border-radius: var(--radius-md);
+    }
+
+    @keyframes skeleton-shimmer {
+      from { background-position: 200% 0; }
+      to   { background-position: -200% 0; }
+    }
+
+    .skeleton-item {
+      height: 72px;
+      border-radius: var(--radius-lg);
+    }
+
+    @media (max-width: 480px) {
+      .hero-card {
+        padding: var(--sp-8) var(--sp-6);
+        border-radius: var(--radius-xl);
+      }
+      .hero-title { font-size: var(--text-3xl); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar" id="navbar">
+    <a class="navbar-brand" href="index.html" aria-label="SurveyMine 홈">
+      <div class="brand-icon" aria-hidden="true">📊</div>
+      <span class="text-gradient">SurveyMine</span>
+    </a>
+    <div class="navbar-nav">
+      <a class="nav-link" href="login.html" id="nav-login">
+        <span>🔑</span> 로그인
+      </a>
+      <a class="btn btn-primary btn-sm" href="admin/dashboard.html" id="nav-dashboard" style="display:none">
+        <span>⚡</span> 대시보드
+      </a>
+      <button class="btn btn-ghost btn-sm" id="nav-logout" style="display:none">
+        로그아웃
+      </button>
+    </div>
+  </nav>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container" role="alert" aria-live="polite"></div>
+
+  <!-- Hero -->
+  <main class="hero" role="main">
+    <div class="hero-card" id="main-card">
+      <div class="hero-logo" aria-hidden="true">📊</div>
+
+      <div class="hero-badge">
+        <span>✨</span> 데이터마이닝 기반 설문 플랫폼
+      </div>
+
+      <h1 class="hero-title">
+        모두의 <span class="text-gradient">설문조사</span>
+      </h1>
+      <p class="hero-subtitle">
+        학교를 선택하고 원하는 설문에 바로 참여하세요.<br/>
+        로그인 없이 간편하게 응답할 수 있습니다.
+      </p>
+
+      <!-- 2단계 진입 패널 -->
+      <div class="select-panel" id="select-panel">
+
+        <!-- STEP 1: 학교 선택 -->
+        <div class="select-step active" id="step1" role="region" aria-labelledby="step1-title">
+          <div class="step-header">
+            <div class="step-num" aria-hidden="true">1</div>
+            <span class="step-title" id="step1-title">학교 선택</span>
+          </div>
+
+          <div class="search-select-wrap">
+            <div class="search-input-wrap">
+              <span class="search-icon" aria-hidden="true">🔍</span>
+              <input
+                id="school-search"
+                type="text"
+                class="form-input"
+                placeholder="학교 이름을 검색하세요..."
+                autocomplete="off"
+                aria-label="학교 검색"
+                aria-autocomplete="list"
+                aria-controls="school-dropdown"
+                aria-expanded="false"
+              />
+            </div>
+            <div class="dropdown-list" id="school-dropdown" role="listbox" aria-label="학교 목록">
+              <!-- JS로 채워짐 -->
+            </div>
+          </div>
+
+          <div id="step1-loading" class="skeleton skeleton-item" style="display:none" aria-label="로딩 중"></div>
+        </div>
+
+        <!-- STEP 2: 설문 선택 -->
+        <div class="select-step" id="step2" role="region" aria-labelledby="step2-title">
+          <div class="step-header" style="justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:var(--sp-3)">
+              <div class="step-num" aria-hidden="true">2</div>
+              <span class="step-title" id="step2-title">설문 선택</span>
+            </div>
+            <button class="back-btn" id="back-btn" aria-label="학교 선택으로 돌아가기">
+              ← 학교 변경
+            </button>
+          </div>
+
+          <div id="school-chosen" style="display:flex;align-items:center;gap:var(--sp-2);font-size:var(--text-sm);color:var(--clr-text-secondary)"></div>
+
+          <div id="survey-list-container" class="survey-list" aria-label="설문 목록" role="list">
+            <!-- JS로 채워짐 -->
+          </div>
+
+          <div id="step2-loading" class="skeleton skeleton-item" style="display:none" aria-label="로딩 중"></div>
+        </div>
+
+      </div><!-- /select-panel -->
+
+      <!-- 하단 피처 칩 -->
+      <div class="feature-chips" aria-label="주요 기능">
+        <span class="feature-chip">✍️ 서명 패드</span>
+        <span class="feature-chip">📈 데이터마이닝</span>
+        <span class="feature-chip">🌐 연관어 분석</span>
+        <span class="feature-chip">📊 교차분석</span>
+      </div>
+
+      <div class="hero-footer">
+        <a href="login.html">설문 제작자 로그인</a>
+        <span style="color:var(--clr-border)">|</span>
+        <a href="signup.html">회원가입</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    /* ── Toast Helper ─────────────────────────────────────────── */
+    function showToast(type, title, message = '', duration = 4000) {
+      const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.innerHTML = `
+        <div class="toast-icon">${icons[type]||'ℹ️'}</div>
+        <div class="toast-body">
+          <div class="toast-title">${title}</div>
+          ${message ? `<div class="toast-message">${message}</div>` : ''}
+        </div>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), duration);
+    }
+
+    /* ── Navbar 상태 ──────────────────────────────────────────── */
+    (function initNav() {
+      if (Auth.isLoggedIn()) {
+        document.getElementById('nav-login').style.display = 'none';
+        document.getElementById('nav-dashboard').style.display = '';
+        document.getElementById('nav-logout').style.display = '';
+        document.getElementById('nav-logout').addEventListener('click', async () => {
+          try { await API.logout(); } catch {}
+          Auth.clearSession();
+          location.reload();
+        });
+      }
+    })();
+
+    /* ── URL 파라미터 처리 (QR코드 직접 링크) ─────────────────── */
+    (function handleQueryParams() {
+      const params = new URLSearchParams(location.search);
+      const school = params.get('school');
+      const survey = params.get('survey');
+
+      if (survey) {
+        // surveyId 직접 지정 시 응답 화면으로 바로 이동
+        location.href = `respond.html?surveyId=${encodeURIComponent(survey)}`;
+        return;
+      }
+      if (school) {
+        // 학교 이름이 있으면 STEP 2로 바로
+        goToStep2(school);
+      }
+    })();
+
+    /* ── 학교 목록 로드 ───────────────────────────────────────── */
+    let allSchools = [];
+    const searchInput   = document.getElementById('school-search');
+    const dropdown      = document.getElementById('school-dropdown');
+
+    async function loadSchools() {
+      const loadEl = document.getElementById('step1-loading');
+      try {
+        loadEl.style.display = 'block';
+        const res = await API.listSchools();
+        allSchools = res.data || [];
+        loadEl.style.display = 'none';
+      } catch (err) {
+        loadEl.style.display = 'none';
+        // API 연결 전 데모 데이터
+        allSchools = [
+          { schoolId:'S001', schoolName:'경남중학교',  region:'경상남도' },
+          { schoolId:'S002', schoolName:'경남고등학교', region:'경상남도' },
+          { schoolId:'S003', schoolName:'창원초등학교', region:'경상남도' },
+          { schoolId:'S004', schoolName:'마산중학교',   region:'경상남도' },
+          { schoolId:'S005', schoolName:'진주고등학교', region:'경상남도' },
+        ];
+        showToast('info', '데모 모드', 'GAS URL 설정 전 데모 데이터를 표시합니다.');
+      }
+    }
+
+    function renderDropdown(query) {
+      const filtered = query
+        ? allSchools.filter(s => s.schoolName.includes(query) || s.region.includes(query))
+        : allSchools;
+
+      dropdown.innerHTML = '';
+
+      if (filtered.length === 0) {
+        dropdown.innerHTML = `<div class="dropdown-empty">🏫 검색 결과가 없습니다</div>`;
+      } else {
+        filtered.slice(0, 30).forEach(school => {
+          const item = document.createElement('div');
+          item.className = 'dropdown-item';
+          item.setAttribute('role', 'option');
+          item.setAttribute('aria-label', school.schoolName);
+          item.innerHTML = `
+            <span class="school-icon">🏫</span>
+            <span>${school.schoolName}</span>
+            <span style="margin-left:auto;color:var(--clr-text-muted);font-size:var(--text-xs)">${school.region||''}</span>
+          `;
+          item.addEventListener('click', () => {
+            searchInput.value = school.schoolName;
+            dropdown.classList.remove('open');
+            searchInput.setAttribute('aria-expanded', 'false');
+            goToStep2(school.schoolName);
+          });
+          dropdown.appendChild(item);
+        });
+      }
+
+      dropdown.classList.add('open');
+      searchInput.setAttribute('aria-expanded', 'true');
+    }
+
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim();
+      if (q.length === 0 && allSchools.length === 0) return;
+      renderDropdown(q);
+    });
+
+    searchInput.addEventListener('focus', () => {
+      if (allSchools.length > 0) renderDropdown(searchInput.value.trim());
+    });
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#school-search') && !e.target.closest('#school-dropdown')) {
+        dropdown.classList.remove('open');
+        searchInput.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // 키보드 탐색
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        dropdown.classList.remove('open');
+        searchInput.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    /* ── STEP 2: 설문 목록 로드 ───────────────────────────────── */
+    async function goToStep2(schoolName) {
+      document.getElementById('step1').classList.remove('active');
+      document.getElementById('step2').classList.add('active');
+
+      // 학교명 표시
+      document.getElementById('school-chosen').innerHTML = `
+        <span style="font-size:1.2rem">🏫</span>
+        <strong style="color:var(--clr-text-primary)">${schoolName}</strong>
+        <span>의 진행 중인 설문</span>
+      `;
+
+      const container = document.getElementById('survey-list-container');
+      const loadEl    = document.getElementById('step2-loading');
+      container.innerHTML = '';
+      loadEl.style.display = 'block';
+
+      let surveys = [];
+      try {
+        const res = await API.listSurveysBySchool(schoolName);
+        surveys = res.data || [];
+      } catch {
+        // 데모 데이터
+        surveys = [
+          {
+            surveyId: 'SRV-DEMO-001',
+            title: '2026년 1학기 학교생활 만족도 조사',
+            description: '수업, 급식, 시설에 관한 의견을 들려주세요',
+            questionCount: 12,
+            endAt: '2026-07-31',
+            themeColor: '#7C3AED',
+          },
+          {
+            surveyId: 'SRV-DEMO-002',
+            title: '진로 희망 조사',
+            description: '미래 직업 및 진로에 관한 설문',
+            questionCount: 8,
+            endAt: '2026-08-15',
+            themeColor: '#0891B2',
+          },
+        ];
+      }
+
+      loadEl.style.display = 'none';
+      renderSurveyList(surveys, container);
+    }
+
+    function renderSurveyList(surveys, container) {
+      if (surveys.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <p>현재 진행 중인 설문이 없습니다</p>
+          </div>
+        `;
+        return;
+      }
+
+      surveys.forEach(sv => {
+        const colors = ['#7C3AED','#0891B2','#059669','#DC2626','#D97706'];
+        const color  = sv.themeColor || colors[Math.floor(Math.random() * colors.length)];
+        const item   = document.createElement('a');
+        item.className = 'survey-list-item';
+        item.href = `respond.html?surveyId=${encodeURIComponent(sv.surveyId)}`;
+        item.setAttribute('role', 'listitem');
+        item.setAttribute('aria-label', `설문: ${sv.title}`);
+        item.innerHTML = `
+          <div class="survey-list-icon" style="background:${color}1a;border:1.5px solid ${color}40">
+            📋
+          </div>
+          <div class="survey-list-info">
+            <div class="survey-list-title">${sv.title}</div>
+            <div class="survey-list-meta">
+              📝 ${sv.questionCount||'?'}문항
+              ${sv.endAt ? ` &middot; 마감 ${sv.endAt}` : ''}
+            </div>
+          </div>
+          <div class="survey-list-arrow" aria-hidden="true">›</div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    /* ── 뒤로 가기 ────────────────────────────────────────────── */
+    document.getElementById('back-btn').addEventListener('click', () => {
+      document.getElementById('step2').classList.remove('active');
+      document.getElementById('step1').classList.add('active');
+      document.getElementById('school-search').value = '';
+      document.getElementById('survey-list-container').innerHTML = '';
+    });
+
+    /* ── 초기화 ───────────────────────────────────────────────── */
+    loadSchools();
+  </script>
+</body>
+</html>

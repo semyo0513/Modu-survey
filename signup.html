@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>회원가입 — SurveyMine</title>
+  <meta name="description" content="SurveyMine 설문 제작자로 가입하세요." />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-8) var(--sp-6);
+      position: relative;
+    }
+
+    .auth-page::before {
+      content: '';
+      position: fixed;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, hsla(285,80%,60%,0.12) 0%, transparent 70%);
+      bottom: -100px; left: -100px;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .auth-card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-2xl);
+      padding: var(--sp-10) var(--sp-10);
+      max-width: 480px;
+      width: 100%;
+      box-shadow: var(--shadow-xl);
+      animation: slideUp 0.6s var(--ease-out) both;
+      position: relative;
+      z-index: 1;
+    }
+
+    .auth-header {
+      text-align: center;
+      margin-bottom: var(--sp-8);
+    }
+
+    .auth-icon {
+      width: 64px; height: 64px;
+      background: var(--grad-primary);
+      border-radius: var(--radius-xl);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem;
+      margin: 0 auto var(--sp-4);
+      box-shadow: 0 8px 24px var(--clr-primary-glow);
+    }
+
+    .auth-title {
+      font-size: var(--text-2xl);
+      font-weight: 800;
+      margin-bottom: var(--sp-2);
+    }
+
+    .auth-subtitle {
+      font-size: var(--text-sm);
+      color: var(--clr-text-secondary);
+    }
+
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-5);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-4);
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: var(--sp-4);
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1rem;
+      pointer-events: none;
+      color: var(--clr-text-muted);
+    }
+
+    .input-wrapper .form-input {
+      padding-left: calc(var(--sp-4) + 20px + var(--sp-2));
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: var(--sp-4);
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--clr-text-muted);
+      font-size: 1rem;
+      padding: 0;
+      transition: color var(--dur-fast);
+    }
+
+    .password-toggle:hover { color: var(--clr-text-primary); }
+
+    .strength-bar {
+      height: 4px;
+      border-radius: var(--radius-full);
+      background: var(--clr-bg-elevated);
+      overflow: hidden;
+      margin-top: var(--sp-2);
+    }
+
+    .strength-fill {
+      height: 100%;
+      border-radius: inherit;
+      transition: width 0.3s var(--ease-out), background 0.3s;
+      width: 0;
+    }
+
+    .strength-label {
+      font-size: var(--text-xs);
+      margin-top: var(--sp-1);
+      color: var(--clr-text-muted);
+    }
+
+    .terms-check {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--sp-3);
+      padding: var(--sp-4);
+      background: var(--clr-bg-elevated);
+      border-radius: var(--radius-md);
+    }
+
+    .terms-check input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--clr-primary);
+      flex-shrink: 0;
+      margin-top: 2px;
+      cursor: pointer;
+    }
+
+    .terms-check label {
+      font-size: var(--text-sm);
+      color: var(--clr-text-secondary);
+      cursor: pointer;
+    }
+
+    .terms-check a {
+      color: var(--clr-primary-light);
+      text-decoration: underline;
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: var(--sp-6);
+      font-size: var(--text-sm);
+      color: var(--clr-text-muted);
+    }
+
+    .auth-footer a {
+      color: var(--clr-primary-light);
+      font-weight: 600;
+    }
+
+    .error-msg {
+      background: hsla(355,85%,65%,0.1);
+      border: 1px solid hsla(355,85%,65%,0.3);
+      border-radius: var(--radius-md);
+      padding: var(--sp-3) var(--sp-4);
+      font-size: var(--text-sm);
+      color: var(--clr-danger);
+      display: none;
+      align-items: center;
+      gap: var(--sp-2);
+    }
+
+    .error-msg.visible { display: flex; }
+
+    @media (max-width: 480px) {
+      .auth-card { padding: var(--sp-8) var(--sp-6); border-radius: var(--radius-xl); }
+      .form-row  { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar" aria-label="주 메뉴">
+    <a class="navbar-brand" href="index.html" aria-label="SurveyMine 홈">
+      <div class="brand-icon" aria-hidden="true">📊</div>
+      <span class="text-gradient">SurveyMine</span>
+    </a>
+    <div class="navbar-nav">
+      <a class="nav-link" href="login.html">이미 계정이 있나요?</a>
+    </div>
+  </nav>
+
+  <div class="toast-container" id="toast-container" role="alert" aria-live="polite"></div>
+
+  <main class="auth-page" role="main">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-icon" aria-hidden="true">✨</div>
+        <h1 class="auth-title">설문 제작자 가입</h1>
+        <p class="auth-subtitle">설문을 만들고 결과를 분석하세요</p>
+      </div>
+
+      <form class="auth-form" id="signup-form" novalidate aria-label="회원가입 양식">
+        <div id="form-error" class="error-msg" role="alert">
+          <span>❌</span>
+          <span id="form-error-text"></span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="name">이름 <span style="color:var(--clr-danger)">*</span></label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">👤</span>
+              <input id="name" type="text" class="form-input" placeholder="홍길동" required
+                autocomplete="name" aria-required="true" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="school-name">학교명 <span style="color:var(--clr-danger)">*</span></label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">🏫</span>
+              <input id="school-name" type="text" class="form-input" placeholder="경남중학교" required
+                autocomplete="organization" aria-required="true" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="email">이메일 <span style="color:var(--clr-danger)">*</span></label>
+          <div class="input-wrapper">
+            <span class="input-icon" aria-hidden="true">📧</span>
+            <input id="email" type="email" class="form-input" placeholder="teacher@school.edu" required
+              autocomplete="email" aria-required="true" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">비밀번호 <span style="color:var(--clr-danger)">*</span></label>
+          <div class="input-wrapper">
+            <span class="input-icon" aria-hidden="true">🔒</span>
+            <input id="password" type="password" class="form-input" placeholder="8자 이상" required
+              autocomplete="new-password" aria-required="true" aria-describedby="pw-strength-label" />
+            <button type="button" class="password-toggle" id="pw-toggle" aria-label="비밀번호 표시/숨기기">👁</button>
+          </div>
+          <div class="strength-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="비밀번호 강도">
+            <div class="strength-fill" id="strength-fill"></div>
+          </div>
+          <div class="strength-label" id="pw-strength-label"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password-confirm">비밀번호 확인 <span style="color:var(--clr-danger)">*</span></label>
+          <div class="input-wrapper">
+            <span class="input-icon" aria-hidden="true">🔒</span>
+            <input id="password-confirm" type="password" class="form-input" placeholder="비밀번호 재입력" required
+              autocomplete="new-password" aria-required="true" />
+            <button type="button" class="password-toggle" id="pw-confirm-toggle" aria-label="비밀번호 확인 표시/숨기기">👁</button>
+          </div>
+          <div class="form-error" id="pw-match-error" style="display:none">⚠️ 비밀번호가 일치하지 않습니다</div>
+        </div>
+
+        <div class="terms-check">
+          <input type="checkbox" id="terms" required aria-required="true" />
+          <label for="terms">
+            <a href="#" onclick="return false">서비스 이용약관</a> 및
+            <a href="#" onclick="return false">개인정보 처리방침</a>에 동의합니다. (필수)
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full btn-lg" id="submit-btn">
+          <span id="submit-text">가입 완료</span>
+          <div class="spinner spinner-sm" id="submit-spinner" style="display:none" aria-label="처리 중"></div>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        이미 계정이 있으신가요? <a href="login.html">로그인 →</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    Auth.redirectIfLoggedIn('/admin/dashboard.html');
+
+    /* ── Toast Helper ─────────────────────────────────────────── */
+    function showToast(type, title, msg='') {
+      const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
+      const c = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast toast-${type}`;
+      t.innerHTML = `
+        <div class="toast-icon">${icons[type]}</div>
+        <div class="toast-body">
+          <div class="toast-title">${title}</div>
+          ${msg?`<div class="toast-message">${msg}</div>`:''}
+        </div>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+
+    /* ── 비밀번호 강도 ────────────────────────────────────────── */
+    const pwInput    = document.getElementById('password');
+    const strengthFill  = document.getElementById('strength-fill');
+    const strengthLabel = document.getElementById('pw-strength-label');
+
+    pwInput.addEventListener('input', () => {
+      const val = pwInput.value;
+      let score = 0;
+      if (val.length >= 8)  score++;
+      if (/[A-Z]/.test(val)) score++;
+      if (/[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val)) score++;
+
+      const levels = [
+        { pct: 0,   color: '',                     label: '' },
+        { pct: 25,  color: 'var(--clr-danger)',    label: '❌ 매우 약함' },
+        { pct: 50,  color: 'var(--clr-warning)',   label: '⚠️ 약함' },
+        { pct: 75,  color: 'var(--clr-info)',      label: '✅ 보통' },
+        { pct: 100, color: 'var(--clr-success)',   label: '💪 강함' },
+      ];
+
+      const lvl = val.length === 0 ? levels[0] : levels[score];
+      strengthFill.style.width  = lvl.pct + '%';
+      strengthFill.style.background = lvl.color;
+      strengthLabel.textContent = lvl.label;
+      document.querySelector('[role="progressbar"]').setAttribute('aria-valuenow', lvl.pct);
+    });
+
+    /* ── 비밀번호 표시 토글 ───────────────────────────────────── */
+    function setupPwToggle(btnId, inputId) {
+      document.getElementById(btnId).addEventListener('click', () => {
+        const input = document.getElementById(inputId);
+        input.type = input.type === 'password' ? 'text' : 'password';
+      });
+    }
+    setupPwToggle('pw-toggle', 'password');
+    setupPwToggle('pw-confirm-toggle', 'password-confirm');
+
+    /* ── 비밀번호 확인 실시간 검사 ────────────────────────────── */
+    const pwConfirm = document.getElementById('password-confirm');
+    const pwMatchError = document.getElementById('pw-match-error');
+    pwConfirm.addEventListener('input', () => {
+      if (pwConfirm.value && pwConfirm.value !== pwInput.value) {
+        pwMatchError.style.display = 'flex';
+        pwConfirm.classList.add('is-error');
+      } else {
+        pwMatchError.style.display = 'none';
+        pwConfirm.classList.remove('is-error');
+        if (pwConfirm.value) pwConfirm.classList.add('is-success');
+      }
+    });
+
+    /* ── 폼 에러 표시 ─────────────────────────────────────────── */
+    function showFormError(msg) {
+      const el = document.getElementById('form-error');
+      document.getElementById('form-error-text').textContent = msg;
+      el.classList.add('visible');
+    }
+
+    function hideFormError() {
+      document.getElementById('form-error').classList.remove('visible');
+    }
+
+    /* ── 제출 ─────────────────────────────────────────────────── */
+    document.getElementById('signup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideFormError();
+
+      const name        = document.getElementById('name').value.trim();
+      const schoolName  = document.getElementById('school-name').value.trim();
+      const email       = document.getElementById('email').value.trim();
+      const password    = pwInput.value;
+      const passwordCf  = pwConfirm.value;
+      const terms       = document.getElementById('terms').checked;
+
+      // 유효성 검사
+      if (!name || !schoolName || !email || !password) {
+        showFormError('모든 필수 항목을 입력해 주세요.');
+        return;
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showFormError('올바른 이메일 형식을 입력해 주세요.');
+        return;
+      }
+
+      if (password.length < 8) {
+        showFormError('비밀번호는 8자 이상이어야 합니다.');
+        return;
+      }
+
+      if (password !== passwordCf) {
+        showFormError('비밀번호가 일치하지 않습니다.');
+        return;
+      }
+
+      if (!terms) {
+        showFormError('이용약관에 동의해 주세요.');
+        return;
+      }
+
+      // 로딩
+      const btn = document.getElementById('submit-btn');
+      document.getElementById('submit-text').textContent = '처리 중...';
+      document.getElementById('submit-spinner').style.display = 'block';
+      btn.disabled = true;
+
+      try {
+        const res = await API.signup(email, password, name, schoolName);
+        showToast('success', '가입 완료!', '로그인 페이지로 이동합니다...');
+        setTimeout(() => { location.href = 'login.html'; }, 1500);
+      } catch (err) {
+        showFormError(err.message || '가입 중 오류가 발생했습니다. 다시 시도해 주세요.');
+      } finally {
+        document.getElementById('submit-text').textContent = '가입 완료';
+        document.getElementById('submit-spinner').style.display = 'none';
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

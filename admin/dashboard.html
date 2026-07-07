@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>내 설문 목록 — SurveyMine</title>
+  <meta name="description" content="내가 만든 설문조사 목록을 관리합니다." />
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .dashboard-page { min-height: 100vh; }
+
+    .page-header {
+      padding: var(--sp-8) 0 var(--sp-6);
+      border-bottom: 1px solid var(--clr-border);
+      margin-bottom: var(--sp-8);
+    }
+
+    .page-header-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: var(--sp-4);
+    }
+
+    .page-title { font-size: var(--text-3xl); font-weight: 900; }
+    .page-subtitle { color: var(--clr-text-secondary); margin-top: var(--sp-1); font-size: var(--text-sm); }
+
+    /* KPI 섹션 */
+    .kpi-section { margin-bottom: var(--sp-8); }
+
+    /* 필터 바 */
+    .filter-bar {
+      display: flex; align-items: center; gap: var(--sp-3);
+      flex-wrap: wrap; margin-bottom: var(--sp-6);
+    }
+
+    .filter-tab {
+      padding: var(--sp-2) var(--sp-4);
+      border-radius: var(--radius-full);
+      font-size: var(--text-sm); font-weight: 600;
+      cursor: pointer; border: 1.5px solid var(--clr-border);
+      background: transparent; color: var(--clr-text-muted);
+      transition: all var(--dur-fast);
+    }
+
+    .filter-tab:hover   { border-color: var(--clr-primary); color: var(--clr-primary-light); }
+    .filter-tab.active  {
+      background: var(--grad-primary); border-color: transparent;
+      color: white; box-shadow: 0 4px 12px var(--clr-primary-glow);
+    }
+
+    .search-bar {
+      position: relative; margin-left: auto;
+    }
+
+    .search-bar input {
+      width: 220px; padding-left: 2.5rem;
+      background: var(--clr-bg-elevated);
+      border: 1.5px solid var(--clr-border);
+      border-radius: var(--radius-full);
+      font-size: var(--text-sm); color: var(--clr-text-primary);
+      outline: none; transition: all var(--dur-fast);
+    }
+
+    .search-bar input:focus {
+      border-color: var(--clr-primary); box-shadow: 0 0 0 3px var(--clr-primary-glow);
+    }
+
+    .search-bar .search-icon {
+      position: absolute; left: 0.75rem; top: 50%;
+      transform: translateY(-50%); font-size: 0.9rem; pointer-events: none;
+      color: var(--clr-text-muted);
+    }
+
+    /* 설문 그리드 */
+    .surveys-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: var(--sp-5);
+    }
+
+    .survey-card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      transition: all var(--dur-base) var(--ease-out);
+      display: flex; flex-direction: column;
+      animation: fadeSlideIn 0.5s var(--ease-out) both;
+    }
+
+    .survey-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-xl);
+      border-color: var(--clr-border-focus);
+    }
+
+    .survey-card-top {
+      padding: var(--sp-5) var(--sp-6) var(--sp-4);
+      position: relative;
+    }
+
+    .survey-card-top::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--theme-color, var(--grad-primary));
+    }
+
+    .survey-card-status { margin-bottom: var(--sp-3); }
+
+    .survey-card-title {
+      font-size: var(--text-base); font-weight: 700;
+      margin-bottom: var(--sp-2); line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .survey-card-desc {
+      font-size: var(--text-xs); color: var(--clr-text-muted);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; margin-bottom: var(--sp-4);
+    }
+
+    .survey-card-stats {
+      display: flex; gap: var(--sp-4); padding: var(--sp-4) var(--sp-6);
+      background: var(--clr-bg-elevated); border-top: 1px solid var(--clr-border);
+    }
+
+    .stat-item { display: flex; flex-direction: column; gap: 2px; }
+    .stat-val { font-size: var(--text-base); font-weight: 700; }
+    .stat-lbl { font-size: 0.65rem; color: var(--clr-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .survey-card-footer {
+      display: flex; align-items: center; gap: var(--sp-2);
+      padding: var(--sp-4) var(--sp-6); border-top: 1px solid var(--clr-border);
+      background: var(--clr-bg-surface);
+    }
+
+    /* 빈 상태 */
+    .empty-dashboard {
+      text-align: center; padding: var(--sp-20) var(--sp-6);
+    }
+
+    .empty-dashboard .empty-icon { font-size: 4rem; margin-bottom: var(--sp-6); display: block; }
+    .empty-dashboard h3 { margin-bottom: var(--sp-3); }
+    .empty-dashboard p { color: var(--clr-text-secondary); margin-bottom: var(--sp-8); }
+
+    /* 모달 */
+    .create-modal-form { display: flex; flex-direction: column; gap: var(--sp-5); }
+
+    @media (max-width: 640px) {
+      .filter-bar   { gap: var(--sp-2); }
+      .search-bar   { width: 100%; }
+      .search-bar input { width: 100%; }
+      .surveys-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="dashboard-page">
+
+  <!-- Navbar -->
+  <nav class="navbar" aria-label="주 메뉴">
+    <a class="navbar-brand" href="../index.html" aria-label="SurveyMine 홈">
+      <div class="brand-icon" aria-hidden="true">📊</div>
+      <span class="text-gradient">SurveyMine</span>
+    </a>
+    <div class="navbar-nav">
+      <div id="user-badge" style="display:flex;align-items:center;gap:var(--sp-3)">
+        <span id="user-name" style="font-size:var(--text-sm);color:var(--clr-text-secondary)"></span>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="nav-logout">로그아웃</button>
+    </div>
+  </nav>
+
+  <div class="toast-container" id="toast-container" role="alert" aria-live="polite"></div>
+
+  <!-- 설문 만들기 모달 -->
+  <div class="modal-backdrop hidden" id="create-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-title">✨ 새 설문 만들기</h2>
+        <button class="modal-close" id="modal-close" aria-label="닫기">✕</button>
+      </div>
+      <form id="create-form" class="create-modal-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="cf-title">설문 제목 <span style="color:var(--clr-danger)">*</span></label>
+          <input id="cf-title" type="text" class="form-input" placeholder="예: 2026 학교생활 만족도 조사" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cf-desc">설명</label>
+          <textarea id="cf-desc" class="form-textarea" rows="3" placeholder="설문 목적이나 안내사항을 입력하세요"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)">
+          <div class="form-group">
+            <label class="form-label" for="cf-start">시작일</label>
+            <input id="cf-start" type="date" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cf-end">마감일</label>
+            <input id="cf-end" type="date" class="form-input" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cf-color">테마 색상</label>
+          <div style="display:flex;gap:var(--sp-3);align-items:center">
+            <div id="color-palette" style="display:flex;gap:var(--sp-2)"></div>
+            <input type="color" id="cf-color" value="#7C3AED"
+                   style="width:36px;height:36px;border:none;background:none;cursor:pointer;padding:0;border-radius:var(--radius-sm)" />
+          </div>
+        </div>
+        <div class="modal-footer" style="margin-top:0;padding-top:var(--sp-5)">
+          <button type="button" class="btn btn-ghost" id="modal-cancel">취소</button>
+          <button type="submit" class="btn btn-primary" id="create-submit">
+            <span id="create-text">설문 만들기</span>
+            <div class="spinner spinner-sm" id="create-spinner" style="display:none"></div>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 메인 -->
+  <main role="main">
+    <div class="container container-xl">
+
+      <!-- 페이지 헤더 -->
+      <div class="page-header">
+        <div class="page-header-inner">
+          <div>
+            <h1 class="page-title">내 설문 <span class="text-gradient">대시보드</span></h1>
+            <p class="page-subtitle" id="dash-subtitle">설문을 만들고 결과를 분석하세요</p>
+          </div>
+          <button class="btn btn-primary btn-lg" id="btn-create" aria-haspopup="dialog">
+            <span>＋</span> 새 설문 만들기
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI 카드 -->
+      <div class="kpi-section">
+        <div class="kpi-grid" id="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">전체 설문</div>
+            <div class="kpi-value" id="kpi-total">-</div>
+            <div class="kpi-sub">개 설문</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">진행 중</div>
+            <div class="kpi-value" id="kpi-open" style="background:var(--grad-accent);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">-</div>
+            <div class="kpi-sub">open 상태</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">총 응답 수</div>
+            <div class="kpi-value" id="kpi-responses">-</div>
+            <div class="kpi-sub">건</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">소속 학교</div>
+            <div class="kpi-value" style="font-size:var(--text-xl)" id="kpi-school">-</div>
+            <div class="kpi-sub">&nbsp;</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 필터 & 검색 -->
+      <div class="filter-bar" role="toolbar" aria-label="설문 필터">
+        <button class="filter-tab active" data-filter="all"   aria-pressed="true">전체</button>
+        <button class="filter-tab" data-filter="draft"        aria-pressed="false">초안</button>
+        <button class="filter-tab" data-filter="open"         aria-pressed="false">진행 중</button>
+        <button class="filter-tab" data-filter="closed"       aria-pressed="false">마감</button>
+        <div class="search-bar" role="search">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input type="text" id="search-input" placeholder="설문 검색..." aria-label="설문 검색" />
+        </div>
+      </div>
+
+      <!-- 설문 목록 -->
+      <div id="surveys-loading" style="text-align:center;padding:var(--sp-12)" aria-label="로딩 중" aria-live="polite">
+        <div class="spinner spinner-lg" style="margin:0 auto var(--sp-4)"></div>
+        <p style="color:var(--clr-text-muted)">설문 목록을 불러오는 중...</p>
+      </div>
+
+      <div id="surveys-grid" class="surveys-grid" style="display:none" role="list" aria-label="설문 목록"></div>
+
+      <div id="empty-state" class="empty-dashboard" style="display:none">
+        <span class="empty-icon" aria-hidden="true">📭</span>
+        <h3>아직 설문이 없습니다</h3>
+        <p>첫 번째 설문을 만들어보세요!</p>
+        <button class="btn btn-primary btn-lg" id="btn-create-empty">✨ 첫 설문 만들기</button>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/api.js"></script>
+  <script>
+    // 인증 체크
+    if (!Auth.requireAuth(true)) {
+      // redirects to login
+    }
+
+    const user = Auth.getUser();
+
+    function showToast(type, title, msg='') {
+      const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
+      const c = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast toast-${type}`;
+      t.innerHTML = `<div class="toast-icon">${icons[type]}</div><div class="toast-body"><div class="toast-title">${title}</div>${msg?`<div class="toast-message">${msg}</div>`:''}</div>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+
+    /* ── 유저 정보 표시 ────────────────────────────────────────── */
+    if (user) {
+      document.getElementById('user-name').textContent = `👤 ${user.name || user.email}`;
+      document.getElementById('kpi-school').textContent = user.schoolName || '-';
+      document.getElementById('dash-subtitle').textContent = `${user.schoolName || ''} · ${user.email}`;
+    }
+
+    document.getElementById('nav-logout').addEventListener('click', async () => {
+      try { await API.logout(); } catch {}
+      Auth.clearSession();
+      location.href = '../login.html';
+    });
+
+    /* ── 색상 팔레트 ─────────────────────────────────────────── */
+    const COLORS = ['#7C3AED','#0891B2','#059669','#DC2626','#D97706','#DB2777','#2563EB'];
+    let selectedColor = COLORS[0];
+    const palette = document.getElementById('color-palette');
+    COLORS.forEach(c => {
+      const swatch = document.createElement('div');
+      swatch.style.cssText = `width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;border:2px solid transparent;transition:all 0.15s`;
+      swatch.addEventListener('click', () => {
+        document.querySelectorAll('#color-palette div').forEach(s => s.style.borderColor = 'transparent');
+        swatch.style.borderColor = 'white';
+        selectedColor = c;
+        document.getElementById('cf-color').value = c;
+      });
+      if (c === COLORS[0]) swatch.style.borderColor = 'white';
+      palette.appendChild(swatch);
+    });
+    document.getElementById('cf-color').addEventListener('input', e => {
+      selectedColor = e.target.value;
+      document.querySelectorAll('#color-palette div').forEach(s => s.style.borderColor = 'transparent');
+    });
+
+    /* ── 모달 ─────────────────────────────────────────────────── */
+    function openModal() {
+      document.getElementById('create-modal').classList.remove('hidden');
+      document.getElementById('cf-title').focus();
+      // 오늘 날짜 기본값
+      const today = new Date().toISOString().split('T')[0];
+      const end30 = new Date(Date.now() + 30*24*3600*1000).toISOString().split('T')[0];
+      document.getElementById('cf-start').value = today;
+      document.getElementById('cf-end').value   = end30;
+    }
+
+    function closeModal() { document.getElementById('create-modal').classList.add('hidden'); }
+
+    document.getElementById('btn-create').addEventListener('click', openModal);
+    document.getElementById('btn-create-empty')?.addEventListener('click', openModal);
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    document.getElementById('modal-cancel').addEventListener('click', closeModal);
+    document.getElementById('create-modal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeModal();
+    });
+
+    /* ── 설문 만들기 ────────────────────────────────────────────── */
+    document.getElementById('create-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('cf-title').value.trim();
+      if (!title) { document.getElementById('cf-title').classList.add('is-error'); return; }
+
+      document.getElementById('create-text').textContent = '생성 중...';
+      document.getElementById('create-spinner').style.display = 'block';
+      document.getElementById('create-submit').disabled = true;
+
+      const data = {
+        title,
+        description: document.getElementById('cf-desc').value.trim(),
+        startAt: document.getElementById('cf-start').value,
+        endAt:   document.getElementById('cf-end').value,
+        themeColor: selectedColor,
+        schoolName: user?.schoolName || '',
+        status: 'draft',
+      };
+
+      try {
+        const res = await API.createSurvey(data);
+        closeModal();
+        showToast('success', '설문이 만들어졌습니다!', '빌더에서 문항을 추가하세요.');
+        setTimeout(() => {
+          location.href = `builder.html?surveyId=${res.surveyId}`;
+        }, 800);
+      } catch (err) {
+        // 데모 모드
+        const demoId = 'SRV-' + Date.now();
+        closeModal();
+        showToast('info', '데모 모드', '빌더 페이지로 이동합니다.');
+        setTimeout(() => { location.href = `builder.html?surveyId=${demoId}`; }, 800);
+      } finally {
+        document.getElementById('create-text').textContent = '설문 만들기';
+        document.getElementById('create-spinner').style.display = 'none';
+        document.getElementById('create-submit').disabled = false;
+      }
+    });
+
+    /* ── 설문 목록 로드 ─────────────────────────────────────────── */
+    let allSurveys = [];
+    let currentFilter = 'all';
+
+    async function loadSurveys() {
+      try {
+        const res = await API.listMySurveys();
+        allSurveys = res.data || [];
+      } catch {
+        // 데모 데이터
+        allSurveys = [
+          {
+            surveyId: 'SRV-001', title: '2026 학교생활 만족도 조사',
+            description: '학교 환경 개선을 위한 만족도 조사입니다.',
+            status: 'open', themeColor: '#7C3AED',
+            responseCount: 87, questionCount: 8,
+            startAt: '2026-07-01', endAt: '2026-07-31', createdAt: '2026-07-01',
+          },
+          {
+            surveyId: 'SRV-002', title: '진로 희망 설문',
+            description: '학생들의 진로 희망을 파악합니다.',
+            status: 'open', themeColor: '#0891B2',
+            responseCount: 43, questionCount: 5,
+            startAt: '2026-07-05', endAt: '2026-08-15', createdAt: '2026-07-05',
+          },
+          {
+            surveyId: 'SRV-003', title: '급식 메뉴 선호도 조사',
+            description: '새 학기 급식 메뉴 개선을 위한 조사입니다.',
+            status: 'draft', themeColor: '#059669',
+            responseCount: 0, questionCount: 4,
+            startAt: '', endAt: '', createdAt: '2026-07-06',
+          },
+          {
+            surveyId: 'SRV-004', title: '방과후 프로그램 수요 조사',
+            description: '2학기 방과후 프로그램 개설을 위한 조사입니다.',
+            status: 'closed', themeColor: '#D97706',
+            responseCount: 152, questionCount: 6,
+            startAt: '2026-06-01', endAt: '2026-06-30', createdAt: '2026-06-01',
+          },
+        ];
+      }
+
+      // KPI 업데이트
+      const totalResponses = allSurveys.reduce((s, sv) => s + (sv.responseCount || 0), 0);
+      document.getElementById('kpi-total').textContent     = allSurveys.length;
+      document.getElementById('kpi-open').textContent      = allSurveys.filter(s => s.status === 'open').length;
+      document.getElementById('kpi-responses').textContent = totalResponses.toLocaleString();
+
+      document.getElementById('surveys-loading').style.display = 'none';
+      renderSurveys();
+    }
+
+    function renderSurveys() {
+      const grid    = document.getElementById('surveys-grid');
+      const empty   = document.getElementById('empty-state');
+      const query   = document.getElementById('search-input').value.trim().toLowerCase();
+
+      let filtered = allSurveys;
+      if (currentFilter !== 'all') filtered = filtered.filter(s => s.status === currentFilter);
+      if (query) filtered = filtered.filter(s => s.title.toLowerCase().includes(query));
+
+      if (filtered.length === 0) {
+        grid.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      grid.style.display  = 'grid';
+      grid.innerHTML      = filtered.map((sv, i) => surveyCardHtml(sv, i)).join('');
+
+      // 액션 버튼 이벤트
+      grid.querySelectorAll('[data-action]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const { action, surveyid } = btn.dataset;
+          handleAction(action, surveyid);
+        });
+      });
+    }
+
+    const STATUS_MAP = {
+      draft:  { label:'초안',    badge:'badge-muted',   icon:'📝' },
+      open:   { label:'진행 중', badge:'badge-success', icon:'🟢' },
+      closed: { label:'마감',    badge:'badge-danger',  icon:'🔴' },
+    };
+
+    function surveyCardHtml(sv, i) {
+      const st = STATUS_MAP[sv.status] || STATUS_MAP.draft;
+      const color = sv.themeColor || '#7C3AED';
+      return `
+        <div class="survey-card" role="listitem" style="animation-delay:${i*60}ms">
+          <div class="survey-card-top" style="--theme-color:${color}">
+            <div class="survey-card-status">
+              <span class="badge ${st.badge}">${st.icon} ${st.label}</span>
+            </div>
+            <div class="survey-card-title">${sv.title}</div>
+            <div class="survey-card-desc">${sv.description || ''}</div>
+            ${sv.endAt ? `<div style="font-size:var(--text-xs);color:var(--clr-text-muted)">📅 마감: ${sv.endAt}</div>` : ''}
+          </div>
+          <div class="survey-card-stats">
+            <div class="stat-item">
+              <span class="stat-val" style="color:var(--clr-primary-light)">${(sv.responseCount||0).toLocaleString()}</span>
+              <span class="stat-lbl">응답 수</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-val">${sv.questionCount||0}</span>
+              <span class="stat-lbl">문항</span>
+            </div>
+            <div class="stat-item" style="margin-left:auto">
+              ${sv.status==='open' ? `
+                <a href="../respond.html?surveyId=${sv.surveyId}" target="_blank"
+                   style="font-size:var(--text-xs);color:var(--clr-accent)">🔗 응답 링크</a>` : ''}
+            </div>
+          </div>
+          <div class="survey-card-footer">
+            <a href="builder.html?surveyId=${sv.surveyId}" class="btn btn-ghost btn-sm" aria-label="문항 편집">
+              ✏️ 편집
+            </a>
+            ${sv.status !== 'closed' ? `
+              <button class="btn btn-ghost btn-sm" data-action="${sv.status==='open'?'close':'open'}" data-surveyid="${sv.surveyId}"
+                      aria-label="${sv.status==='open'?'마감':'게시'}">
+                ${sv.status==='open' ? '⏹ 마감' : '🚀 게시'}
+              </button>` : ''}
+            <a href="results.html?surveyId=${sv.surveyId}" class="btn btn-primary btn-sm" style="margin-left:auto"
+               aria-label="결과 보기">
+              📊 결과
+            </a>
+          </div>
+        </div>`;
+    }
+
+    async function handleAction(action, surveyId) {
+      const statusMap = { open: 'open', close: 'closed' };
+      try {
+        await API.setSurveyStatus(surveyId, statusMap[action]);
+        showToast('success', '상태가 변경되었습니다.');
+        allSurveys = allSurveys.map(sv =>
+          sv.surveyId === surveyId ? { ...sv, status: statusMap[action] } : sv
+        );
+        renderSurveys();
+      } catch {
+        // 데모
+        allSurveys = allSurveys.map(sv =>
+          sv.surveyId === surveyId ? { ...sv, status: statusMap[action] } : sv
+        );
+        renderSurveys();
+        showToast('success', '상태가 변경되었습니다. (데모)');
+      }
+    }
+
+    /* ── 필터 ─────────────────────────────────────────────────── */
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.filter-tab').forEach(t => {
+          t.classList.remove('active'); t.setAttribute('aria-pressed','false');
+        });
+        tab.classList.add('active'); tab.setAttribute('aria-pressed','true');
+        currentFilter = tab.dataset.filter;
+        renderSurveys();
+      });
+    });
+
+    document.getElementById('search-input').addEventListener('input', renderSurveys);
+
+    /* ── 초기화 ───────────────────────────────────────────────── */
+    loadSurveys();
+  </script>
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>로그인 — SurveyMine</title>
+  <meta name="description" content="SurveyMine 설문 제작자 로그인 페이지입니다." />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-8) var(--sp-6);
+      position: relative;
+    }
+    .auth-page::before {
+      content: '';
+      position: fixed;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, hsla(248,90%,66%,0.14) 0%, transparent 70%);
+      top: -100px; right: -150px;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .auth-card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-2xl);
+      padding: var(--sp-10);
+      max-width: 440px;
+      width: 100%;
+      box-shadow: var(--shadow-xl), 0 0 60px hsla(248,90%,66%,0.08);
+      animation: slideUp 0.6s var(--ease-out) both;
+      position: relative; z-index: 1;
+    }
+    .auth-header {
+      text-align: center;
+      margin-bottom: var(--sp-8);
+    }
+    .auth-icon {
+      width: 64px; height: 64px;
+      background: var(--grad-primary);
+      border-radius: var(--radius-xl);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem;
+      margin: 0 auto var(--sp-4);
+      box-shadow: 0 8px 24px var(--clr-primary-glow);
+    }
+    .auth-title { font-size: var(--text-2xl); font-weight: 800; margin-bottom: var(--sp-2); }
+    .auth-subtitle { font-size: var(--text-sm); color: var(--clr-text-secondary); }
+    .auth-form { display: flex; flex-direction: column; gap: var(--sp-5); }
+    .input-wrapper { position: relative; }
+    .input-icon {
+      position: absolute; left: var(--sp-4); top: 50%;
+      transform: translateY(-50%); font-size: 1rem;
+      pointer-events: none; color: var(--clr-text-muted);
+    }
+    .input-wrapper .form-input { padding-left: calc(var(--sp-4) + 20px + var(--sp-2)); }
+    .password-toggle {
+      position: absolute; right: var(--sp-4); top: 50%;
+      transform: translateY(-50%); background: none; border: none;
+      cursor: pointer; color: var(--clr-text-muted); font-size: 1rem;
+      padding: 0; transition: color var(--dur-fast);
+    }
+    .password-toggle:hover { color: var(--clr-text-primary); }
+    .form-options {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: var(--text-sm);
+    }
+    .remember-check { display: flex; align-items: center; gap: var(--sp-2); cursor: pointer; color: var(--clr-text-secondary); }
+    .remember-check input { accent-color: var(--clr-primary); width: 16px; height: 16px; cursor: pointer; }
+    .forgot-link { color: var(--clr-primary-light); }
+    .forgot-link:hover { text-decoration: underline; }
+    .error-msg {
+      background: hsla(355,85%,65%,0.1); border: 1px solid hsla(355,85%,65%,0.3);
+      border-radius: var(--radius-md); padding: var(--sp-3) var(--sp-4);
+      font-size: var(--text-sm); color: var(--clr-danger);
+      display: none; align-items: center; gap: var(--sp-2);
+    }
+    .error-msg.visible { display: flex; }
+    .auth-footer {
+      text-align: center; margin-top: var(--sp-6);
+      font-size: var(--text-sm); color: var(--clr-text-muted);
+    }
+    .auth-footer a { color: var(--clr-primary-light); font-weight: 600; }
+    .back-home {
+      display: flex; align-items: center; justify-content: center;
+      gap: var(--sp-2); margin-top: var(--sp-4);
+      font-size: var(--text-sm); color: var(--clr-text-muted);
+    }
+    .back-home a { color: var(--clr-accent); }
+    @media (max-width: 480px) {
+      .auth-card { padding: var(--sp-8) var(--sp-6); border-radius: var(--radius-xl); }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar" aria-label="주 메뉴">
+    <a class="navbar-brand" href="index.html" aria-label="SurveyMine 홈">
+      <div class="brand-icon" aria-hidden="true">📊</div>
+      <span class="text-gradient">SurveyMine</span>
+    </a>
+    <div class="navbar-nav">
+      <a class="nav-link" href="signup.html">회원가입</a>
+    </div>
+  </nav>
+
+  <div class="toast-container" id="toast-container" role="alert" aria-live="polite"></div>
+
+  <main class="auth-page" role="main">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-icon" aria-hidden="true">🔑</div>
+        <h1 class="auth-title">설문 제작자 로그인</h1>
+        <p class="auth-subtitle">설문을 만들고 결과를 분석하세요</p>
+      </div>
+
+      <form class="auth-form" id="login-form" novalidate aria-label="로그인 양식">
+        <div id="form-error" class="error-msg" role="alert">
+          <span>❌</span>
+          <span id="form-error-text"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="email">이메일</label>
+          <div class="input-wrapper">
+            <span class="input-icon" aria-hidden="true">📧</span>
+            <input id="email" type="email" class="form-input"
+              placeholder="teacher@school.edu" required
+              autocomplete="email" aria-required="true" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">비밀번호</label>
+          <div class="input-wrapper">
+            <span class="input-icon" aria-hidden="true">🔒</span>
+            <input id="password" type="password" class="form-input"
+              placeholder="비밀번호 입력" required
+              autocomplete="current-password" aria-required="true" />
+            <button type="button" class="password-toggle" id="pw-toggle" aria-label="비밀번호 표시/숨기기">👁</button>
+          </div>
+        </div>
+
+        <div class="form-options">
+          <label class="remember-check">
+            <input type="checkbox" id="remember" aria-label="로그인 상태 유지" />
+            로그인 상태 유지
+          </label>
+          <a class="forgot-link" href="#" onclick="alert('이메일로 문의해 주세요.'); return false;">
+            비밀번호 찾기
+          </a>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full btn-lg" id="submit-btn">
+          <span id="submit-text">로그인</span>
+          <div class="spinner spinner-sm" id="submit-spinner" style="display:none" aria-label="처리 중"></div>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        계정이 없으신가요? <a href="signup.html">무료 회원가입 →</a>
+      </div>
+      <div class="back-home">
+        <a href="index.html">← 응답자로 참여하기</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    Auth.redirectIfLoggedIn('/admin/dashboard.html');
+
+    function showToast(type, title, msg='') {
+      const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
+      const c = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast toast-${type}`;
+      t.innerHTML = `<div class="toast-icon">${icons[type]}</div><div class="toast-body"><div class="toast-title">${title}</div>${msg?`<div class="toast-message">${msg}</div>`:''}</div>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+
+    document.getElementById('pw-toggle').addEventListener('click', () => {
+      const input = document.getElementById('password');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+
+    function showFormError(msg) {
+      const el = document.getElementById('form-error');
+      document.getElementById('form-error-text').textContent = msg;
+      el.classList.add('visible');
+    }
+
+    // 자동 완성 힌트 (URL 파라미터)
+    const params = new URLSearchParams(location.search);
+    if (params.get('email')) {
+      document.getElementById('email').value = decodeURIComponent(params.get('email'));
+    }
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      document.getElementById('form-error').classList.remove('visible');
+
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        showFormError('이메일과 비밀번호를 입력해 주세요.');
+        return;
+      }
+
+      const btn = document.getElementById('submit-btn');
+      document.getElementById('submit-text').textContent = '로그인 중...';
+      document.getElementById('submit-spinner').style.display = 'block';
+      btn.disabled = true;
+
+      try {
+        const res = await API.login(email, password);
+        Auth.saveSession(res.token, res.user);
+        showToast('success', '로그인 성공!', '대시보드로 이동합니다...');
+
+        const next = params.get('next');
+        setTimeout(() => {
+          location.href = next ? decodeURIComponent(next) : '/admin/dashboard.html';
+        }, 800);
+      } catch (err) {
+        showFormError(err.message || '이메일 또는 비밀번호가 올바르지 않습니다.');
+        document.getElementById('password').value = '';
+      } finally {
+        document.getElementById('submit-text').textContent = '로그인';
+        document.getElementById('submit-spinner').style.display = 'none';
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

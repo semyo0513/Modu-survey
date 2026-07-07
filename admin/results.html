@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>결과 대시보드 — SurveyMine</title>
+  <meta name="description" content="설문 결과를 데이터마이닝으로 분석합니다." />
+  <link rel="stylesheet" href="../css/style.css" />
+
+  <!-- CDN: Chart.js, wordcloud2, vis-network -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/dist/vis-network.min.js"></script>
+
+  <style>
+    .results-page { min-height: 100vh; }
+
+    /* 상단 KPI */
+    .results-header {
+      background: var(--clr-bg-surface);
+      border-bottom: 1px solid var(--clr-border);
+      padding: var(--sp-8) 0 var(--sp-6);
+      margin-bottom: var(--sp-8);
+    }
+
+    .results-title {
+      font-size: var(--text-3xl); font-weight: 900; margin-bottom: var(--sp-2);
+    }
+
+    .survey-meta-row {
+      display: flex; flex-wrap: wrap; gap: var(--sp-4);
+      font-size: var(--text-sm); color: var(--clr-text-secondary);
+      margin-bottom: var(--sp-6);
+    }
+
+    /* 분석 탭 */
+    .analysis-tabs {
+      display: flex; gap: var(--sp-2); margin-bottom: var(--sp-8);
+      border-bottom: 1px solid var(--clr-border); flex-wrap: wrap;
+    }
+
+    .analysis-tab {
+      padding: var(--sp-3) var(--sp-5); font-size: var(--text-sm); font-weight: 600;
+      color: var(--clr-text-muted); cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: all var(--dur-fast); background: none; border-top: none;
+      border-left: none; border-right: none; font-family: var(--font-sans);
+    }
+
+    .analysis-tab:hover { color: var(--clr-text-secondary); }
+    .analysis-tab.active { color: var(--clr-primary-light); border-bottom-color: var(--clr-primary); }
+
+    /* 탭 패널 */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeSlideIn 0.3s var(--ease-out); }
+
+    /* 문항 분석 섹션 */
+    .question-analysis {
+      background: var(--glass-bg); backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border); border-radius: var(--radius-xl);
+      padding: var(--sp-7); margin-bottom: var(--sp-6);
+    }
+
+    .qa-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: var(--sp-4); margin-bottom: var(--sp-6);
+    }
+
+    .qa-type-chip {
+      display: inline-flex; align-items: center; gap: var(--sp-1);
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--clr-accent);
+      background: hsla(185,90%,55%,0.12); border-radius: var(--radius-full);
+      padding: 2px var(--sp-2); margin-bottom: var(--sp-2); flex-shrink: 0;
+    }
+
+    .qa-title {
+      font-size: var(--text-lg); font-weight: 700; margin-bottom: var(--sp-2);
+    }
+
+    .qa-n { font-size: var(--text-xs); color: var(--clr-text-muted); }
+
+    /* 차트 컨테이너 */
+    .chart-wrap {
+      position: relative; width: 100%; height: 280px;
+      margin-top: var(--sp-4);
+    }
+
+    .chart-wrap-sm { height: 200px; }
+    .chart-wrap-lg { height: 380px; }
+
+    /* 텍스트 분석 탭 내 전환 */
+    .text-view-tabs {
+      display: flex; gap: var(--sp-2); margin-bottom: var(--sp-5);
+    }
+
+    .text-view-tab {
+      padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-full);
+      font-size: var(--text-xs); font-weight: 700; cursor: pointer;
+      border: 1.5px solid var(--clr-border);
+      background: transparent; color: var(--clr-text-muted);
+      transition: all var(--dur-fast); font-family: var(--font-sans);
+    }
+
+    .text-view-tab.active {
+      background: var(--clr-primary); border-color: var(--clr-primary);
+      color: white;
+    }
+
+    /* 워드클라우드 캔버스 */
+    #wc-canvas { width: 100% !important; height: 300px !important; border-radius: var(--radius-lg); }
+
+    /* 연관어 네트워크 */
+    #network-container {
+      width: 100%; height: 420px;
+      background: var(--clr-bg-elevated); border-radius: var(--radius-lg);
+      border: 1px solid var(--clr-border);
+    }
+
+    /* 원문 목록 */
+    .text-list { display: flex; flex-direction: column; gap: var(--sp-3); max-height: 400px; overflow-y: auto; }
+
+    .text-item {
+      padding: var(--sp-4); background: var(--clr-bg-elevated);
+      border-radius: var(--radius-md); border-left: 3px solid var(--clr-primary);
+      font-size: var(--text-sm); line-height: 1.7; color: var(--clr-text-secondary);
+    }
+
+    .text-item.positive { border-left-color: var(--clr-success); }
+    .text-item.negative { border-left-color: var(--clr-danger); }
+
+    /* 교차분석 선택 */
+    .crosstab-select {
+      display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4);
+      margin-bottom: var(--sp-6);
+    }
+
+    /* 연관 규칙 테이블 */
+    .rule-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+    .rule-table th, .rule-table td {
+      padding: var(--sp-3) var(--sp-4); text-align: left;
+      border-bottom: 1px solid var(--clr-border);
+    }
+    .rule-table th { color: var(--clr-text-muted); font-weight: 600; background: var(--clr-bg-elevated); }
+    .rule-table td { color: var(--clr-text-secondary); }
+    .rule-table tr:hover td { background: hsla(248,90%,66%,0.04); }
+
+    /* CSV 내보내기 */
+    .export-section {
+      background: var(--clr-bg-elevated); border-radius: var(--radius-lg);
+      padding: var(--sp-5); display: flex; align-items: center;
+      justify-content: space-between; gap: var(--sp-4);
+      margin-bottom: var(--sp-8);
+    }
+
+    /* 필터 */
+    .filter-section {
+      background: var(--clr-bg-elevated); border-radius: var(--radius-lg);
+      padding: var(--sp-4) var(--sp-5); display: flex; align-items: center;
+      gap: var(--sp-4); margin-bottom: var(--sp-6); flex-wrap: wrap;
+    }
+
+    .filter-label { font-size: var(--text-xs); font-weight: 700; color: var(--clr-text-muted); text-transform: uppercase; }
+
+    @media (max-width: 768px) {
+      .crosstab-select { grid-template-columns: 1fr; }
+      .chart-wrap      { height: 220px; }
+      .chart-wrap-lg   { height: 280px; }
+    }
+  </style>
+</head>
+<body class="results-page">
+
+  <!-- Navbar -->
+  <nav class="navbar" aria-label="주 메뉴">
+    <a class="navbar-brand" href="../index.html" aria-label="SurveyMine 홈">
+      <div class="brand-icon" aria-hidden="true">📊</div>
+      <span class="text-gradient">SurveyMine</span>
+    </a>
+    <div class="navbar-nav">
+      <a class="btn btn-ghost btn-sm" href="dashboard.html">← 목록</a>
+      <button class="btn btn-primary btn-sm" id="btn-export" aria-label="CSV 내보내기">⬇️ CSV</button>
+    </div>
+  </nav>
+
+  <div class="toast-container" id="toast-container" role="alert" aria-live="polite"></div>
+
+  <!-- 로딩 -->
+  <div id="loading" style="text-align:center;padding:var(--sp-20)" role="status">
+    <div class="spinner spinner-lg" style="margin:0 auto var(--sp-4)"></div>
+    <p style="color:var(--clr-text-muted)">데이터를 분석하는 중...</p>
+  </div>
+
+  <!-- 메인 콘텐츠 -->
+  <main id="results-main" style="display:none" role="main">
+    <div class="container container-xl">
+
+      <!-- 설문 헤더 -->
+      <div class="results-header">
+        <div style="display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-4)">
+          <div>
+            <h1 class="results-title" id="survey-title">설문 제목</h1>
+            <div class="survey-meta-row" id="survey-meta"></div>
+          </div>
+          <div style="margin-left:auto">
+            <span class="badge" id="survey-status-badge"></span>
+          </div>
+        </div>
+
+        <!-- KPI 카드 -->
+        <div class="kpi-grid" id="kpi-grid"></div>
+      </div>
+
+      <!-- 분석 탭 -->
+      <div class="analysis-tabs" role="tablist" aria-label="분석 방법">
+        <button class="analysis-tab active" data-tab="overview" role="tab" aria-selected="true">📈 문항별 분석</button>
+        <button class="analysis-tab" data-tab="text"     role="tab" aria-selected="false">💬 서술형 분석</button>
+        <button class="analysis-tab" data-tab="crosstab" role="tab" aria-selected="false">🔀 교차분석</button>
+        <button class="analysis-tab" data-tab="basket"   role="tab" aria-selected="false">🛒 장바구니 분석</button>
+        <button class="analysis-tab" data-tab="trend"    role="tab" aria-selected="false">📅 응답 추이</button>
+        <button class="analysis-tab" data-tab="sentiment" role="tab" aria-selected="false">😊 감성분석</button>
+      </div>
+
+      <!-- 탭 패널: 문항별 분석 -->
+      <div class="tab-panel active" id="tab-overview" role="tabpanel">
+        <div id="questions-analysis-area"></div>
+      </div>
+
+      <!-- 탭 패널: 서술형 분석 -->
+      <div class="tab-panel" id="tab-text" role="tabpanel">
+        <div class="form-group" style="margin-bottom:var(--sp-5);max-width:400px">
+          <label class="form-label" for="text-q-select">분석할 서술형 문항 선택</label>
+          <select id="text-q-select" class="form-select"></select>
+        </div>
+
+        <div class="text-view-tabs">
+          <button class="text-view-tab active" data-view="wordcloud">☁️ 워드클라우드</button>
+          <button class="text-view-tab" data-view="network">🕸️ 연관어 네트워크</button>
+          <button class="text-view-tab" data-view="rawtext">📝 원문 목록</button>
+        </div>
+
+        <div id="text-view-wordcloud" class="text-view">
+          <canvas id="wc-canvas" role="img" aria-label="워드클라우드"></canvas>
+        </div>
+        <div id="text-view-network" class="text-view" style="display:none">
+          <div id="network-container" role="img" aria-label="연관어 네트워크 그래프"></div>
+          <p style="font-size:var(--text-xs);color:var(--clr-text-muted);margin-top:var(--sp-2)">
+            💡 노드 크기 = 출현 빈도 / 선 두께 = PMI 값
+          </p>
+        </div>
+        <div id="text-view-rawtext" class="text-view" style="display:none">
+          <div class="text-list" id="raw-text-list"></div>
+        </div>
+      </div>
+
+      <!-- 탭 패널: 교차분석 -->
+      <div class="tab-panel" id="tab-crosstab" role="tabpanel">
+        <div class="crosstab-select">
+          <div class="form-group">
+            <label class="form-label" for="ct-row-q">행 문항 (기준)</label>
+            <select id="ct-row-q" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ct-col-q">열 문항</label>
+            <select id="ct-col-q" class="form-select"></select>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-crosstab" style="margin-bottom:var(--sp-6)">교차분석 실행</button>
+        <div id="crosstab-result"></div>
+      </div>
+
+      <!-- 탭 패널: 장바구니 분석 -->
+      <div class="tab-panel" id="tab-basket" role="tabpanel">
+        <div class="form-group" style="margin-bottom:var(--sp-5);max-width:400px">
+          <label class="form-label" for="basket-q-select">분석할 복수선택 문항</label>
+          <select id="basket-q-select" class="form-select"></select>
+        </div>
+        <button class="btn btn-primary" id="btn-basket" style="margin-bottom:var(--sp-6)">분석 실행</button>
+        <div id="basket-result"></div>
+      </div>
+
+      <!-- 탭 패널: 응답 추이 -->
+      <div class="tab-panel" id="tab-trend" role="tabpanel">
+        <div class="question-analysis">
+          <h3 style="margin-bottom:var(--sp-4)">일별 응답 수 추이</h3>
+          <div class="chart-wrap chart-wrap-lg">
+            <canvas id="trend-chart"></canvas>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-5)">
+          <div class="question-analysis">
+            <h4 style="margin-bottom:var(--sp-3)">기기 유형</h4>
+            <div class="chart-wrap chart-wrap-sm"><canvas id="device-chart"></canvas></div>
+          </div>
+          <div class="question-analysis">
+            <h4 style="margin-bottom:var(--sp-3)">평균 응답 시간</h4>
+            <div style="display:flex;align-items:center;justify-content:center;height:200px;flex-direction:column;gap:var(--sp-2)">
+              <span id="avg-duration" style="font-size:var(--text-4xl);font-weight:900;background:var(--grad-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">-</span>
+              <span style="color:var(--clr-text-muted);font-size:var(--text-sm)">초 (평균)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 탭 패널: 감성분석 -->
+      <div class="tab-panel" id="tab-sentiment" role="tabpanel">
+        <div class="form-group" style="margin-bottom:var(--sp-5);max-width:400px">
+          <label class="form-label" for="sent-q-select">분석할 서술형 문항</label>
+          <select id="sent-q-select" class="form-select"></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:var(--sp-6)" id="sentiment-grid">
+          <div class="question-analysis">
+            <h4 style="margin-bottom:var(--sp-4)">감성 분포</h4>
+            <div class="chart-wrap chart-wrap-sm"><canvas id="sentiment-chart"></canvas></div>
+            <div id="sentiment-stats" style="margin-top:var(--sp-4)"></div>
+          </div>
+          <div class="question-analysis">
+            <h4 style="margin-bottom:var(--sp-4)">일별 감성 추이</h4>
+            <div class="chart-wrap"><canvas id="sentiment-trend-chart"></canvas></div>
+          </div>
+        </div>
+        <div class="question-analysis" style="margin-top:var(--sp-5)">
+          <h4 style="margin-bottom:var(--sp-4)">감성 분류된 응답 목록</h4>
+          <div class="text-list" id="sentiment-text-list"></div>
+        </div>
+      </div>
+
+    </div><!-- /container -->
+  </main>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/charts.js"></script>
+  <script src="../js/mining/frequency.js"></script>
+  <script src="../js/mining/cooccurrence.js"></script>
+  <script src="../js/mining/crosstab.js"></script>
+  <script src="../js/mining/sentiment.js"></script>
+  <script>
+    if (!Auth.requireAuth(true)) { /* redirects */ }
+
+    function showToast(type, title, msg='') {
+      const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
+      const c = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast toast-${type}`;
+      t.innerHTML = `<div class="toast-icon">${icons[type]}</div><div class="toast-body"><div class="toast-title">${title}</div>${msg?`<div class="toast-message">${msg}</div>`:''}</div>`;
+      c.appendChild(t); setTimeout(() => t.remove(), 4000);
+    }
+
+    const params   = new URLSearchParams(location.search);
+    const surveyId = params.get('surveyId');
+
+    let survey    = null;
+    let questions = [];
+    let responses = [];
+    let answers   = [];
+
+    /* ── 데이터 로드 ─────────────────────────────────────────────── */
+    (async function init() {
+      try {
+        const res = await API.getResults(surveyId);
+        survey    = res.survey;
+        questions = res.questions || [];
+        responses = res.responses || [];
+        answers   = res.answers   || [];
+      } catch {
+        // 데모 데이터
+        survey    = { surveyId:'SRV-001', title:'2026 학교생활 만족도 조사', schoolName:'경남중학교', status:'open', endAt:'2026-07-31' };
+        questions = [
+          { questionId:'Q001', type:'radio',    title:'현재 학년', options:['1학년','2학년','3학년'] },
+          { questionId:'Q002', type:'grid_radio',title:'만족도 그리드', grid:{ rows:['수업','급식','시설','동아리'], cols:['매우불만','불만','보통','만족','매우만족'], colScores:[1,2,3,4,5] } },
+          { questionId:'Q003', type:'scale',     title:'전반적 만족도', validation:{ min:1, max:10 } },
+          { questionId:'Q004', type:'rating',    title:'담임 수업 열정' },
+          { questionId:'Q005', type:'checkbox',  title:'개선 필요 항목', options:['화장실','급식','냉난방','교실비품','운동장','도서관'] },
+          { questionId:'Q007', type:'textarea',  title:'자유 의견' },
+        ];
+        responses = _generateDemoResponses(120);
+        answers   = _generateDemoAnswers(responses, questions);
+        showToast('info', '데모 모드', '샘플 데이터로 분석합니다.');
+      }
+
+      renderPage();
+    })();
+
+    /* ── 페이지 렌더링 ───────────────────────────────────────────── */
+    function renderPage() {
+      document.getElementById('loading').style.display       = 'none';
+      document.getElementById('results-main').style.display  = 'block';
+
+      // 헤더
+      document.title = `${survey.title} — 결과`;
+      document.getElementById('survey-title').textContent = survey.title;
+
+      const st = { draft:'badge-muted', open:'badge-success', closed:'badge-danger' };
+      const stLabel = { draft:'초안', open:'진행 중', closed:'마감' };
+      const badge = document.getElementById('survey-status-badge');
+      badge.className = `badge ${st[survey.status]||'badge-muted'}`;
+      badge.textContent = stLabel[survey.status] || survey.status;
+
+      document.getElementById('survey-meta').innerHTML = `
+        <span>🏫 ${survey.schoolName}</span>
+        <span>📝 ${questions.length}개 문항</span>
+        ${survey.endAt ? `<span>📅 마감: ${survey.endAt}</span>` : ''}
+      `;
+
+      // KPI
+      const totalResp = responses.length;
+      const avgDur    = responses.length ? Math.round(responses.reduce((s,r) => s+(r.durationSec||0),0)/responses.length) : 0;
+      document.getElementById('kpi-grid').innerHTML = `
+        <div class="kpi-card"><div class="kpi-label">총 응답 수</div><div class="kpi-value">${totalResp.toLocaleString()}</div><div class="kpi-sub">건</div></div>
+        <div class="kpi-card"><div class="kpi-label">문항 수</div><div class="kpi-value">${questions.length}</div><div class="kpi-sub">개</div></div>
+        <div class="kpi-card"><div class="kpi-label">평균 소요</div><div class="kpi-value" style="font-size:var(--text-2xl)">${avgDur}초</div><div class="kpi-sub">&nbsp;</div></div>
+        <div class="kpi-card"><div class="kpi-label">학교</div><div class="kpi-value" style="font-size:var(--text-xl)">${survey.schoolName}</div><div class="kpi-sub">&nbsp;</div></div>
+      `;
+
+      // 분석 탭 세팅
+      populateTextQuestions();
+      populateCrosstabSelects();
+      populateBasketSelect();
+      populateSentimentSelect();
+
+      // 문항별 자동 분석
+      renderOverview();
+
+      // 추이
+      Charts.renderResponseTrend('trend-chart', responses);
+      renderDeviceChart();
+      document.getElementById('avg-duration').textContent = avgDur;
+    }
+
+    /* ── 문항별 분석 ─────────────────────────────────────────────── */
+    function renderOverview() {
+      const area = document.getElementById('questions-analysis-area');
+      area.innerHTML = '';
+
+      questions.forEach((q, qi) => {
+        const section = document.createElement('div');
+        section.className = 'question-analysis';
+
+        const n = answers.filter(a => a.questionId === q.questionId).length;
+        section.innerHTML = `
+          <div class="qa-header">
+            <div>
+              <div class="qa-type-chip">${q.type}</div>
+              <div class="qa-title">Q${qi+1}. ${q.title}</div>
+              <div class="qa-n">응답 수: ${n}건</div>
+            </div>
+          </div>
+          <div id="qa-body-${q.questionId}"></div>`;
+
+        area.appendChild(section);
+        const bodyEl = document.getElementById(`qa-body-${q.questionId}`);
+        renderQuestionChart(q, bodyEl);
+      });
+    }
+
+    function renderQuestionChart(q, container) {
+      const cid = `chart-${q.questionId}`;
+
+      switch (q.type) {
+        case 'radio':
+        case 'dropdown': {
+          const r = FrequencyAnalyzer.analyzeChoices(answers, q.questionId);
+          container.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-5)">
+            <div class="chart-wrap"><canvas id="${cid}-bar"></canvas></div>
+            <div class="chart-wrap"><canvas id="${cid}-doughnut"></canvas></div>
+          </div>`;
+          Charts.renderBar(    `${cid}-bar`,     { labels: r.items.map(i=>i.label), values: r.items.map(i=>i.count) });
+          Charts.renderDoughnut(`${cid}-doughnut`,{ labels: r.items.map(i=>i.label), values: r.items.map(i=>i.count) });
+          break;
+        }
+        case 'checkbox': {
+          const r = FrequencyAnalyzer.analyzeChoices(answers, q.questionId);
+          container.innerHTML = `<div class="chart-wrap chart-wrap-lg"><canvas id="${cid}"></canvas></div>`;
+          Charts.renderPareto(cid, { labels: r.items.map(i=>i.label), values: r.items.map(i=>i.count) });
+          break;
+        }
+        case 'scale':
+        case 'rating': {
+          const r = FrequencyAnalyzer.analyzeNumeric(answers, q.questionId);
+          if (!r) { container.innerHTML = '<p style="color:var(--clr-text-muted)">응답 없음</p>'; break; }
+          container.innerHTML = `
+            <div style="display:flex;gap:var(--sp-6);flex-wrap:wrap;margin-bottom:var(--sp-4)">
+              <div><div style="font-size:var(--text-3xl);font-weight:900;background:var(--grad-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${r.mean}</div><div style="font-size:var(--text-xs);color:var(--clr-text-muted)">평균</div></div>
+              <div><div style="font-size:var(--text-3xl);font-weight:900">${r.median}</div><div style="font-size:var(--text-xs);color:var(--clr-text-muted)">중앙값</div></div>
+              <div><div style="font-size:var(--text-2xl);font-weight:700">${r.std}</div><div style="font-size:var(--text-xs);color:var(--clr-text-muted)">표준편차</div></div>
+              <div><div style="font-size:var(--text-2xl);font-weight:700">${r.min} ~ ${r.max}</div><div style="font-size:var(--text-xs);color:var(--clr-text-muted)">범위</div></div>
+            </div>
+            <div class="chart-wrap"><canvas id="${cid}"></canvas></div>`;
+          Charts.renderBar(cid, { labels: r.dist.map(d=>d.label+'점'), values: r.dist.map(d=>d.count) });
+          break;
+        }
+        case 'grid_radio':
+        case 'grid_checkbox': {
+          let grid; try { grid = typeof q.grid==='string'?JSON.parse(q.grid):q.grid; } catch { grid={rows:[],cols:[]}; }
+          const matrix = grid.rows.map(row =>
+            grid.cols.map(col => answers.filter(a => a.questionId===q.questionId && a.valueRow===row && a.valueCol===col).length)
+          );
+          container.innerHTML = `<div id="heatmap-${q.questionId}"></div>`;
+          Charts.renderHeatmap(`heatmap-${q.questionId}`, { rows: grid.rows, cols: grid.cols, matrix });
+          break;
+        }
+        case 'textarea':
+        case 'text': {
+          const r = FrequencyAnalyzer.analyzeText(answers, q.questionId, { topN: 20 });
+          container.innerHTML = `
+            <div style="font-size:var(--text-xs);color:var(--clr-text-muted);margin-bottom:var(--sp-3)">${r.totalTexts}개 텍스트 분석</div>
+            <div class="chart-wrap"><canvas id="${cid}"></canvas></div>`;
+          if (r.items.length) {
+            Charts.renderBar(cid, { labels: r.items.map(i=>i.word), values: r.items.map(i=>i.count), title:'단어 빈도' });
+          }
+          break;
+        }
+        default:
+          container.innerHTML = `<p style="color:var(--clr-text-muted);font-size:var(--text-sm)">이 문항 타입은 자동 차트를 지원하지 않습니다.</p>`;
+      }
+    }
+
+    /* ── 서술형 분석 탭 ──────────────────────────────────────────── */
+    function populateTextQuestions() {
+      const sel = document.getElementById('text-q-select');
+      const textQs = questions.filter(q => q.type==='textarea'||q.type==='text');
+      textQs.forEach(q => {
+        const opt = document.createElement('option');
+        opt.value = q.questionId; opt.textContent = q.title;
+        sel.appendChild(opt);
+      });
+      if (textQs.length) renderTextAnalysis(textQs[0].questionId);
+      sel.addEventListener('change', () => renderTextAnalysis(sel.value));
+    }
+
+    function renderTextAnalysis(qid) {
+      const r   = FrequencyAnalyzer.analyzeText(answers, qid, { topN: 50 });
+      const wcData = Charts.prepareWordCloud(r.items);
+
+      // 워드클라우드
+      const canvas = document.getElementById('wc-canvas');
+      if (canvas && typeof WordCloud !== 'undefined' && wcData.length) {
+        WordCloud(canvas, {
+          list: wcData, gridSize: 8, weightFactor: 1.2,
+          fontFamily: 'Pretendard, Inter, sans-serif', color: () => Charts.PALETTE[Math.floor(Math.random()*Charts.PALETTE.length)],
+          rotateRatio: 0.3, backgroundColor: 'transparent',
+        });
+      }
+
+      // 연관어 네트워크
+      const coocResult = CooccurrenceAnalyzer.analyze(answers, qid);
+      const { visNodes, visEdges } = CooccurrenceAnalyzer.toVisNetwork(coocResult);
+      const container = document.getElementById('network-container');
+      if (container && typeof vis !== 'undefined') {
+        const netData = { nodes: new vis.DataSet(visNodes), edges: new vis.DataSet(visEdges) };
+        new vis.Network(container, netData, {
+          nodes: { shape:'dot', scaling:{ min:10, max:40 } },
+          edges: { smooth:{ type:'continuous' } },
+          physics: { stabilization:{ iterations:200 } },
+          interaction: { hover:true },
+        });
+      }
+
+      // 원문 목록
+      const rawList = document.getElementById('raw-text-list');
+      const rawTexts = answers.filter(a=>a.questionId===qid && a.textRaw);
+      rawList.innerHTML = rawTexts.slice(0,50).map(a =>
+        `<div class="text-item">${a.textRaw}</div>`
+      ).join('') || '<p style="color:var(--clr-text-muted)">응답 없음</p>';
+    }
+
+    // 서술형 뷰 전환
+    document.querySelectorAll('.text-view-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.text-view-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('.text-view').forEach(v => v.style.display = 'none');
+        const target = `text-view-${tab.dataset.view}`;
+        document.getElementById(target).style.display = 'block';
+      });
+    });
+
+    /* ── 교차분석 탭 ─────────────────────────────────────────────── */
+    function populateCrosstabSelects() {
+      const choiceQs = questions.filter(q => ['radio','checkbox','dropdown'].includes(q.type));
+      ['ct-row-q','ct-col-q'].forEach(id => {
+        const sel = document.getElementById(id);
+        choiceQs.forEach(q => {
+          const opt = document.createElement('option');
+          opt.value = q.questionId; opt.textContent = q.title;
+          sel.appendChild(opt);
+        });
+      });
+      if (choiceQs.length > 1) document.getElementById('ct-col-q').selectedIndex = 1;
+    }
+
+    document.getElementById('btn-crosstab').addEventListener('click', () => {
+      const rowQid = document.getElementById('ct-row-q').value;
+      const colQid = document.getElementById('ct-col-q').value;
+      if (rowQid === colQid) { showToast('warning', '다른 문항을 선택해 주세요.'); return; }
+
+      const ct = CrosstabAnalyzer.buildCrosstab(answers, rowQid, colQid);
+      renderCrosstabResult(ct, rowQid, colQid);
+    });
+
+    function renderCrosstabResult(ct, rowQid, colQid) {
+      const rowQ = questions.find(q=>q.questionId===rowQid);
+      const colQ = questions.find(q=>q.questionId===colQid);
+      const container = document.getElementById('crosstab-result');
+
+      // 테이블
+      let tableHtml = `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:var(--text-xs);margin-bottom:var(--sp-4)">
+        <thead><tr style="background:var(--clr-bg-elevated)">
+          <th style="padding:var(--sp-2) var(--sp-3);text-align:left;color:var(--clr-text-muted)">${rowQ?.title||rowQid}</th>
+          ${ct.cols.map(c=>`<th style="padding:var(--sp-2) var(--sp-3);color:var(--clr-text-secondary)">${c}</th>`).join('')}
+          <th style="padding:var(--sp-2) var(--sp-3);color:var(--clr-text-muted)">합계</th>
+        </tr></thead><tbody>`;
+
+      ct.rows.forEach((row, ri) => {
+        tableHtml += `<tr>
+          <td style="padding:var(--sp-2) var(--sp-3);font-weight:600">${row}</td>
+          ${ct.matrix[ri].map((v, ci) => `<td style="padding:var(--sp-2) var(--sp-3);text-align:center">${v}<br/><span style="color:var(--clr-text-muted)">(${ct.matrixPct[ri][ci]}%)</span></td>`).join('')}
+          <td style="padding:var(--sp-2) var(--sp-3);text-align:center;font-weight:600">${ct.rowTotals[ri]}</td>
+        </tr>`;
+      });
+
+      tableHtml += `<tr style="border-top:2px solid var(--clr-border)">
+        <td style="font-weight:700;padding:var(--sp-2) var(--sp-3)">합계</td>
+        ${ct.colTotals.map(v=>`<td style="padding:var(--sp-2) var(--sp-3);text-align:center;font-weight:600">${v}</td>`).join('')}
+        <td style="padding:var(--sp-2) var(--sp-3);text-align:center;font-weight:700">${ct.grandTotal}</td>
+      </tr>`;
+      tableHtml += '</tbody></table></div>';
+
+      // 카이제곱 결과
+      const chi = ct.chi2;
+      const chiHtml = `<div class="question-analysis" style="margin-bottom:var(--sp-4)">
+        <h4 style="margin-bottom:var(--sp-3)">카이제곱 검정 결과</h4>
+        <div style="display:flex;gap:var(--sp-6);flex-wrap:wrap">
+          <div><div style="font-size:var(--text-2xl);font-weight:700">${chi.chi2}</div><div style="font-size:var(--text-xs);color:var(--clr-text-muted)">χ² 값</div></div>
+          <div><div style="font-size:var(--text-2xl);font-weight:700">${chi.df}</div><div style="font-size:var(--text-xs);color:var(--clr-text-muted)">자유도</div></div>
+          <div><div style="font-size:var(--text-2xl);font-weight:700">${chi.pValue}</div><div style="font-size:var(--text-xs);color:var(--clr-text-muted)">p-value</div></div>
+          <div><div class="badge ${chi.significant?'badge-danger':'badge-muted'}" style="font-size:var(--text-sm);padding:var(--sp-2) var(--sp-3)">${chi.significant?'✅ 유의미':'— 유의미하지 않음'} ${chi.level}</div></div>
+        </div>
+      </div>`;
+
+      // 히트맵
+      const heatmapId = 'crosstab-heatmap-' + Date.now();
+      container.innerHTML = chiHtml + tableHtml + `<div class="question-analysis"><h4 style="margin-bottom:var(--sp-4)">히트맵</h4><div id="${heatmapId}"></div></div>`;
+      Charts.renderHeatmap(heatmapId, { rows: ct.rows, cols: ct.cols, matrix: ct.matrix });
+    }
+
+    /* ── 장바구니 분석 탭 ────────────────────────────────────────── */
+    function populateBasketSelect() {
+      const sel = document.getElementById('basket-q-select');
+      questions.filter(q=>q.type==='checkbox').forEach(q => {
+        const opt = document.createElement('option');
+        opt.value = q.questionId; opt.textContent = q.title; sel.appendChild(opt);
+      });
+    }
+
+    document.getElementById('btn-basket').addEventListener('click', () => {
+      const qid = document.getElementById('basket-q-select').value;
+      if (!qid) { showToast('warning', '문항을 선택해 주세요.'); return; }
+      const rules = CrosstabAnalyzer.basketAnalysis(answers, qid, 0.05, 0.2);
+      renderBasketResult(rules);
+    });
+
+    function renderBasketResult(rules) {
+      const container = document.getElementById('basket-result');
+      if (!rules.length) {
+        container.innerHTML = '<p style="color:var(--clr-text-muted)">유의미한 연관 규칙이 없습니다.</p>';
+        return;
+      }
+      container.innerHTML = `
+        <div style="overflow-x:auto">
+          <table class="rule-table">
+            <thead><tr><th>선행 항목</th><th>후행 항목</th><th>지지도</th><th>신뢰도</th><th>향상도</th></tr></thead>
+            <tbody>
+              ${rules.slice(0,20).map(r => `
+                <tr>
+                  <td>${r.antecedent}</td><td>→ ${r.consequent}</td>
+                  <td>${(r.support*100).toFixed(1)}%</td>
+                  <td>${(r.confidence*100).toFixed(1)}%</td>
+                  <td><span class="${r.lift>1?'badge badge-success':'badge badge-muted'}">${r.lift}</span></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    /* ── 감성분석 탭 ─────────────────────────────────────────────── */
+    function populateSentimentSelect() {
+      const sel = document.getElementById('sent-q-select');
+      questions.filter(q=>q.type==='textarea'||q.type==='text').forEach(q => {
+        const opt = document.createElement('option');
+        opt.value = q.questionId; opt.textContent = q.title; sel.appendChild(opt);
+      });
+      sel.addEventListener('change', () => renderSentimentAnalysis(sel.value));
+      if (sel.options.length) renderSentimentAnalysis(sel.value);
+    }
+
+    function renderSentimentAnalysis(qid) {
+      const result = SentimentAnalyzer.analyze(answers, qid);
+      Charts.renderSentimentDoughnut('sentiment-chart', result);
+
+      document.getElementById('sentiment-stats').innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+          <div style="display:flex;justify-content:space-between;font-size:var(--text-sm)"><span>😊 긍정</span><strong style="color:var(--clr-success)">${result.positive}건</strong></div>
+          <div style="display:flex;justify-content:space-between;font-size:var(--text-sm)"><span>😢 부정</span><strong style="color:var(--clr-danger)">${result.negative}건</strong></div>
+          <div style="display:flex;justify-content:space-between;font-size:var(--text-sm)"><span>😐 중립</span><strong>${result.neutral}건</strong></div>
+          <div style="margin-top:var(--sp-2);padding-top:var(--sp-2);border-top:1px solid var(--clr-border);display:flex;justify-content:space-between;font-size:var(--text-sm)"><span>평균 감성 점수</span><strong>${result.avgScore}</strong></div>
+        </div>`;
+
+      const ts = SentimentAnalyzer.timeSeries(answers, qid);
+      if (ts.length > 1) {
+        Charts.renderLine('sentiment-trend-chart', {
+          labels:   ts.map(d=>d.date),
+          datasets: [
+            { label:'평균 감성 점수', data: ts.map(d=>d.avgScore) },
+          ],
+        });
+      }
+
+      const listEl = document.getElementById('sentiment-text-list');
+      listEl.innerHTML = result.items.slice(0,30).map(item =>
+        `<div class="text-item ${item.sentiment}">
+          <span style="font-size:var(--text-xs);color:var(--clr-text-muted);float:right">${item.sentiment} (${item.score})</span>
+          ${item.text}
+        </div>`
+      ).join('') || '<p style="color:var(--clr-text-muted)">응답 없음</p>';
+    }
+
+    /* ── 기기 차트 ───────────────────────────────────────────────── */
+    function renderDeviceChart() {
+      const freq = { mobile:0, desktop:0, tablet:0 };
+      responses.forEach(r => { const d = r.deviceType||'desktop'; freq[d]=(freq[d]||0)+1; });
+      Charts.renderDoughnut('device-chart', {
+        labels: ['모바일📱','데스크톱💻','태블릿📱'],
+        values: [freq.mobile, freq.desktop, freq.tablet],
+      });
+    }
+
+    /* ── CSV 내보내기 ────────────────────────────────────────────── */
+    document.getElementById('btn-export').addEventListener('click', () => {
+      const headers = ['answerId','responseId','surveyId','questionId','questionType','value','valueRow','valueCol','textRaw'];
+      const rows    = answers.map(a => headers.map(h => `"${(a[h]||'').toString().replace(/"/g,'""')}"`).join(','));
+      const csv     = [headers.join(','), ...rows].join('\n');
+      const blob    = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' });
+      const url     = URL.createObjectURL(blob);
+      const a       = document.createElement('a');
+      a.href = url; a.download = `SurveyMine_${surveyId}_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click(); URL.revokeObjectURL(url);
+      showToast('success', 'CSV 다운로드 완료!');
+    });
+
+    /* ── 탭 전환 ─────────────────────────────────────────────────── */
+    document.querySelectorAll('.analysis-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.analysis-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active'); tab.setAttribute('aria-selected','true');
+        document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+      });
+    });
+
+    /* ── 데모 데이터 생성 ─────────────────────────────────────────── */
+    function _generateDemoResponses(n) {
+      const devices = ['mobile','desktop','mobile','desktop','tablet'];
+      return Array.from({ length: n }, (_, i) => ({
+        responseId: `R${String(i+1).padStart(4,'0')}`,
+        surveyId:   'SRV-001',
+        submittedAt: new Date(Date.now() - Math.random()*30*86400*1000).toISOString(),
+        deviceType:  devices[Math.floor(Math.random()*devices.length)],
+        durationSec: 120 + Math.floor(Math.random()*300),
+      }));
+    }
+
+    function _generateDemoAnswers(resps, qs) {
+      const ans = [];
+      let aid = 1;
+      const TEXTS = [
+        '급식이 맛있었으면 좋겠습니다. 특히 김치찌개가 좋았어요.',
+        '도서관 이용 시간이 너무 짧습니다. 방과후에도 열었으면 해요.',
+        '선생님들이 매우 친절하고 열심히 가르쳐 주셔서 감사합니다.',
+        '화장실 환경이 조금 불편합니다. 개선이 필요해 보입니다.',
+        '동아리 활동이 다양해서 정말 즐거운 학교생활을 하고 있습니다.',
+        '냉방이 잘 안되어서 여름에 너무 덥습니다. 에어컨 수리가 필요합니다.',
+        '운동장이 넓어서 체육 시간이 즐겁습니다. 더 다양한 스포츠를 배우고 싶어요.',
+        '수업이 재미있고 선생님이 이해하기 쉽게 설명해 주십니다.',
+        '급식 메뉴가 좀 더 다양했으면 좋겠습니다. 매일 비슷한 메뉴가 나옵니다.',
+        '친구들과 함께하는 시간이 많아서 행복합니다.',
+      ];
+
+      resps.forEach(resp => {
+        qs.forEach(q => {
+          switch(q.type) {
+            case 'radio':
+              ans.push({ answerId:`A${aid++}`, responseId:resp.responseId, surveyId:resp.surveyId, questionId:q.questionId, questionType:'radio', value: q.options[Math.floor(Math.random()*q.options.length)] });
+              break;
+            case 'scale':
+              ans.push({ answerId:`A${aid++}`, responseId:resp.responseId, surveyId:resp.surveyId, questionId:q.questionId, questionType:'scale', value: String(Math.floor(Math.random()*10)+1) });
+              break;
+            case 'rating':
+              ans.push({ answerId:`A${aid++}`, responseId:resp.responseId, surveyId:resp.surveyId, questionId:q.questionId, questionType:'rating', value: String(Math.floor(Math.random()*5)+1) });
+              break;
+            case 'checkbox': {
+              const chosen = q.options.filter(() => Math.random()>0.5).slice(0,3);
+              if (!chosen.length) chosen.push(q.options[0]);
+              chosen.forEach(opt => ans.push({ answerId:`A${aid++}`, responseId:resp.responseId, surveyId:resp.surveyId, questionId:q.questionId, questionType:'checkbox', value:opt }));
+              break;
+            }
+            case 'grid_radio': {
+              let grid; try { grid=typeof q.grid==='string'?JSON.parse(q.grid):q.grid; } catch{grid={rows:[],cols:[]};}
+              grid.rows.forEach(row => ans.push({ answerId:`A${aid++}`, responseId:resp.responseId, surveyId:resp.surveyId, questionId:q.questionId, questionType:'grid_radio', valueRow:row, valueCol:grid.cols[Math.floor(Math.random()*grid.cols.length)] }));
+              break;
+            }
+            case 'textarea':
+              if (Math.random()>0.3) ans.push({ answerId:`A${aid++}`, responseId:resp.responseId, surveyId:resp.surveyId, questionId:q.questionId, questionType:'textarea', textRaw: TEXTS[Math.floor(Math.random()*TEXTS.length)], submittedAt:resp.submittedAt });
+              break;
+          }
+        });
+      });
+      return ans;
+    }
+  </script>
+</body>
+</html>
